@@ -1,0 +1,42 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}SGD{% endblock %}</title>
+  <link rel="icon" type="image/png" href="{% static 'img/logo.png' %}">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body>
+  <div class="page-shell">
+    <header class="topbar container">
+      <nav class="main-nav">
+        <ul>
+          <li>
+            <a href="/" class="brand-mark">
+              <img src="{% static 'img/logo.png' %}" alt="Logo Alcaldia de Cabrera" class="brand-logo">
+              <span class="brand-copy">
+                <strong>Sistema de Gestion Documental</strong>
+                <small>Alcaldia de Cabrera</small>
+              </span>
+            </a>
+          </li>
+        </ul>
+        <ul>
+          <li><a href="/">Inicio</a></li>
+          <li><a href="/dashboard/">Dashboard</a></li>
+          <li><a href="/documentos/">Documentos</a></li>
+        </ul>
+      </nav>
+    </header>
+    <main class="container page-content">
+      {% block content %}{% endblock %}
+    </main>
+    <footer class="container site-footer">
+      <p>SGD institucional con clasificacion archivistica basada en TRD.</p>
+    </footer>
+  </div>
+</body>
+</html>

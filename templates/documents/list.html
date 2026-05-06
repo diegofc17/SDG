@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Documentos | SGD{% endblock %}
+{% block content %}
+<section class="content-card">
+<span class="section-kicker">Consulta documental</span>
+<h1>Documentos</h1>
+<div class="hero-actions">
+  <a href="/documentos/nuevo/" role="button">Subir documento</a>
+</div>
+{% if user_dependencia %}
+<div class="info-strip"><strong>Dependencia activa:</strong> {{ user_dependencia }}</div>
+{% else %}
+<div class="info-strip"><strong>No tienes dependencia asignada.</strong> Solo podras ver documentos cuando el admin te la asigne.</div>
+{% endif %}
+
+<form method="get" class="search-panel">
+  <div class="grid">
+    <div>
+      <label for="{{ search_form.q.id_for_label }}">Busqueda</label>
+      {{ search_form.q }}
+    </div>
+    <div>
+      <label for="{{ search_form.estado.id_for_label }}">Estado</label>
+      {{ search_form.estado }}
+    </div>
+    <div>
+      <label for="{{ search_form.soporte.id_for_label }}">Soporte</label>
+      {{ search_form.soporte }}
+    </div>
+  </div>
+  <div class="grid">
+    <div>
+      <label for="{{ search_form.fecha_desde.id_for_label }}">Fecha desde</label>
+      {{ search_form.fecha_desde }}
+    </div>
+    <div>
+      <label for="{{ search_form.fecha_hasta.id_for_label }}">Fecha hasta</label>
+      {{ search_form.fecha_hasta }}
+    </div>
+    <div class="search-actions">
+      <button type="submit">Buscar</button>
+      <a href="{% url 'document_list' %}" role="button" class="secondary">Limpiar</a>
+    </div>
+  </div>
+</form>
+
+<table>
+  <thead>
+    <tr>
+      <th>Radicado</th>
+      <th>Titulo</th>
+      <th>Asunto</th>
+      <th>Fecha radicacion</th>
+      <th>Estado</th>
+      <th>Soporte</th>
+      <th>Dependencia</th>
+      <th>Serie</th>
+      <th>Subserie</th>
+      <th>Tipo</th>
+      <th>Usuario</th>
+      <th>Creado</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for doc in documents %}
+      <tr>
+        <td><a href="{% url 'document_detail' doc.pk %}">{{ doc.numero_radicado }}</a></td>
+        <td><a href="{% url 'document_detail' doc.pk %}">{{ doc.title }}</a></td>
+        <td>{{ doc.asunto }}</td>
+        <td>{{ doc.fecha_radicacion }}</td>
+        <td>{{ doc.estado_label }}</td>
+        <td>{{ doc.soporte_label }}</td>
+        <td>{% if doc.dependencia %}{{ doc.dependencia.display_label }}{% else %}-{% endif %}</td>
+        <td>{% if doc.serie %}{{ doc.serie.display_label }}{% else %}-{% endif %}</td>
+        <td>{% if doc.subserie %}{{ doc.subserie.display_label }}{% else %}-{% endif %}</td>
+        <td>{% if doc.tipo_documental %}{{ doc.tipo_documental.display_label }}{% else %}-{% endif %}</td>
+        <td>{{ doc.uploaded_by }}</td>
+        <td>{{ doc.created_at }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="12">No hay documentos cargados.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% if page_obj %}
+<div class="pagination-bar">
+  <span>Pagina {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+  <div class="hero-actions">
+    {% if page_obj.has_previous %}
+    <a href="?page={{ page_obj.previous_page_number }}&q={{ request.GET.q|default:'' }}&estado={{ request.GET.estado|default:'' }}&soporte={{ request.GET.soporte|default:'' }}&fecha_desde={{ request.GET.fecha_desde|default:'' }}&fecha_hasta={{ request.GET.fecha_hasta|default:'' }}" role="button" class="secondary">Anterior</a>
+    {% endif %}
+    {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}&q={{ request.GET.q|default:'' }}&estado={{ request.GET.estado|default:'' }}&soporte={{ request.GET.soporte|default:'' }}&fecha_desde={{ request.GET.fecha_desde|default:'' }}&fecha_hasta={{ request.GET.fecha_hasta|default:'' }}" role="button" class="secondary">Siguiente</a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+</section>
+{% endblock %}

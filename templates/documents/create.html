@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% block title %}{% if is_edit %}Editar Documento{% else %}Nuevo Documento{% endif %} | SGD{% endblock %}
+{% block content %}
+<section class="content-card">
+<span class="section-kicker">Radicacion</span>
+<h1>{% if is_edit %}Editar documento{% else %}Nuevo documento{% endif %}</h1>
+{% if missing_dependencia %}
+<div class="info-strip"><strong>No puedes crear documentos aun.</strong> Solicita al administrador que te asigne una dependencia.</div>
+{% else %}
+<div class="info-strip">
+  {% if is_edit %}
+  Actualiza la informacion registrada o reemplaza el archivo conservando la clasificacion TRD del documento.
+  {% else %}
+  Completa la clasificacion archivistica segun la TRD de tu dependencia antes de cargar el archivo.
+  {% endif %}
+</div>
+<form method="post" enctype="multipart/form-data" id="document-form">
+  {% csrf_token %}
+  {{ form.non_field_errors }}
+  <label for="{{ form.numero_radicado.id_for_label }}">Numero de radicado <span class="field-note">Opcional</span></label>
+  {{ form.numero_radicado }}
+  {% if form.numero_radicado.help_text %}<small>{{ form.numero_radicado.help_text }}</small>{% endif %}
+  {{ form.numero_radicado.errors }}
+
+  <label for="{{ form.title.id_for_label }}">Titulo</label>
+  {{ form.title }}
+  {{ form.title.errors }}
+
+  <label for="{{ form.asunto.id_for_label }}">Asunto</label>
+  {{ form.asunto }}
+  {% if form.asunto.help_text %}<small>{{ form.asunto.help_text }}</small>{% endif %}
+  {{ form.asunto.errors }}
+
+  <div class="grid">
+    <div>
+      <label for="{{ form.fecha_documento.id_for_label }}">Fecha del documento</label>
+      {{ form.fecha_documento }}
+      {{ form.fecha_documento.errors }}
+    </div>
+    <div>
+      <label for="{{ form.fecha_radicacion.id_for_label }}">Fecha de radicacion <span class="field-note">Opcional</span></label>
+      {{ form.fecha_radicacion }}
+      {{ form.fecha_radicacion.errors }}
+    </div>
+  </div>
+
+  <div class="grid">
+    <div>
+      <label for="{{ form.estado.id_for_label }}">Estado del documento</label>
+      {{ form.estado }}
+      {% if form.estado.help_text %}<small>{{ form.estado.help_text }}</small>{% endif %}
+      {{ form.estado.errors }}
+    </div>
+    <div>
+      <label for="{{ form.soporte.id_for_label }}">Tipo de soporte</label>
+      {{ form.soporte }}
+      {% if form.soporte.help_text %}<small>{{ form.soporte.help_text }}</small>{% endif %}
+      {{ form.soporte.errors }}
+    </div>
+  </div>
+
+  <label for="{{ form.description.id_for_label }}">Descripcion</label>
+  {{ form.description }}
+  {{ form.description.errors }}
+
+  <label for="{{ form.observaciones.id_for_label }}">Observaciones</label>
+  {{ form.observaciones }}
+  {{ form.observaciones.errors }}
+
+  <label for="{{ form.serie.id_for_label }}">Serie documental</label>
+  {{ form.serie }}
+  {{ form.serie.errors }}
+
+  <label for="{{ form.subserie.id_for_label }}">Subserie documental</label>
+  {{ form.subserie }}
+  {{ form.subserie.errors }}
+
+  <label for="{{ form.tipo_documental.id_for_label }}">Tipo documental</label>
+  {{ form.tipo_documental }}
+  {{ form.tipo_documental.errors }}
+
+  <label for="{{ form.file.id_for_label }}">Archivo</label>
+  {% if is_edit and document.file %}
+  <p><strong>Archivo actual:</strong> <a href="{{ document.file.url }}" target="_blank" rel="noopener">Ver archivo cargado</a></p>
+  <small>Si seleccionas un nuevo archivo, reemplazara el actual.</small>
+  {% endif %}
+  {{ form.file }}
+  {{ form.file.errors }}
+
+  <button type="submit">{% if is_edit %}Guardar cambios{% else %}Guardar{% endif %}</button>
+</form>
+<script>
+  (function () {
+    const serieSelect = document.getElementById("id_serie");
+    const subserieSelect = document.getElementById("id_subserie");
+    const tipoSelect = document.getElementById("id_tipo_documental");
+
+    if (!serieSelect || !subserieSelect || !tipoSelect) {
+      return;
+    }
+
+    const setOptions = (select, items, placeholder, selectedValue = "") => {
+      select.innerHTML = "";
+      const defaultOption = document.createElement("option");
+      defaultOption.value = "";
+      defaultOption.textContent = placeholder;
+      select.appendChild(defaultOption);
+
+      items.forEach((item) => {
+        const option = document.createElement("option");
+        option.value = item.id;
+        option.textContent = item.name;
+        if (String(item.id) === String(selectedValue)) {
+          option.selected = true;
+        }
+        select.appendChild(option);
+      });
+    };
+
+    const resetSelect = (select, placeholder) => {
+      select.innerHTML = "";
+      const option = document.createElement("option");
+      option.value = "";
+      option.textContent = placeholder;
+      select.appendChild(option);
+    };
+
+    const fetchOptions = async (url) => {
+      const response = await fetch(url, {
+        headers: { "X-Requested-With": "XMLHttpRequest" }
+      });
+      if (!response.ok) {
+        return [];
+      }
+      const data = await response.json();
+      return data.results || [];
+    };
+
+    const loadSubseries = async () => {
+      const serieId = serieSelect.value;
+      const selectedSubserie = subserieSelect.value;
+      resetSelect(subserieSelect, "Selecciona una subserie");
+      resetSelect(tipoSelect, "Selecciona un tipo documental");
+      if (!serieId) {
+        return;
+      }
+      const items = await fetchOptions(`/documentos/api/subseries/?serie_id=${serieId}`);
+      setOptions(subserieSelect, items, "Selecciona una subserie", selectedSubserie);
+    };
+
+    const loadTipos = async () => {
+      const subserieId = subserieSelect.value;
+      const selectedTipo = tipoSelect.value;
+      resetSelect(tipoSelect, "Selecciona un tipo documental");
+      if (!subserieId) {
+        return;
+      }
+      const items = await fetchOptions(`/documentos/api/tipos-documentales/?subserie_id=${subserieId}`);
+      setOptions(tipoSelect, items, "Selecciona un tipo documental", selectedTipo);
+    };
+
+    serieSelect.addEventListener("change", loadSubseries);
+    subserieSelect.addEventListener("change", loadTipos);
+
+    if (serieSelect.value) {
+      loadSubseries().then(() => {
+        if (subserieSelect.value) {
+          loadTipos();
+        }
+      });
+    }
+  })();
+</script>
+{% endif %}
+</section>
+{% endblock %}
