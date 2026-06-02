@@ -45,7 +45,7 @@ class SerieDocumental(models.Model):
 
     @property
     def display_label(self):
-        return f"{self.full_code} - {self.name}"
+        return f"{self.dependencia.name} | {self.full_code} - {self.name}"
 
 
 class SubserieDocumental(models.Model):
@@ -112,6 +112,54 @@ class TipoDocumental(models.Model):
         return f"{self.subserie.full_code} / {self.name}"
 
 
+class Expediente(models.Model):
+    ESTADO_CHOICES = [
+        ("abierto", "Abierto"),
+        ("cerrado", "Cerrado"),
+        ("archivado", "Archivado"),
+    ]
+
+    codigo = models.CharField(max_length=60, db_index=True)
+    nombre = models.CharField(max_length=180)
+    descripcion = models.TextField(blank=True)
+    dependencia = models.ForeignKey(
+        Dependencia, on_delete=models.PROTECT, related_name="expedientes", null=True, blank=True
+    )
+    serie = models.ForeignKey(
+        SerieDocumental, on_delete=models.PROTECT, related_name="expedientes", null=True, blank=True
+    )
+    subserie = models.ForeignKey(
+        SubserieDocumental, on_delete=models.PROTECT, related_name="expedientes", null=True, blank=True
+    )
+    estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default="abierto", db_index=True)
+    fecha_apertura = models.DateField(null=True, blank=True)
+    fecha_cierre = models.DateField(null=True, blank=True)
+    created_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="expedientes")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        unique_together = ("dependencia", "codigo")
+        indexes = [
+            models.Index(fields=["dependencia", "estado"]),
+            models.Index(fields=["dependencia", "created_at"]),
+        ]
+
+    def clean(self):
+        if self.subserie and self.serie and self.subserie.serie_id != self.serie_id:
+            raise ValidationError("La subserie no pertenece a la serie del expediente.")
+        if self.fecha_cierre and self.fecha_apertura and self.fecha_cierre < self.fecha_apertura:
+            raise ValidationError("La fecha de cierre no puede ser anterior a la fecha de apertura.")
+
+    def __str__(self):
+        return f"{self.codigo} - {self.nombre}"
+
+    @property
+    def estado_label(self):
+        return self.get_estado_display()
+
+
 class Document(models.Model):
     ESTADO_CHOICES = [
         ("radicado", "Radicado"),
@@ -138,6 +186,9 @@ class Document(models.Model):
     dependencia = models.ForeignKey(
         Dependencia, on_delete=models.PROTECT, related_name="documents", null=True, blank=True
     )
+    expediente = models.ForeignKey(
+        Expediente, on_delete=models.SET_NULL, related_name="documents", null=True, blank=True
+    )
     serie = models.ForeignKey(
         SerieDocumental, on_delete=models.PROTECT, related_name="documents", null=True, blank=True
     )
@@ -161,10 +212,10 @@ class Document(models.Model):
         ]
 
     def clean(self):
+        if self.expediente and self.dependencia and self.expediente.dependencia_id != self.dependencia_id:
+            raise ValidationError("El expediente no pertenece a la dependencia del documento.")
         if self.fecha_radicacion and self.fecha_documento and self.fecha_radicacion < self.fecha_documento:
             raise ValidationError("La fecha de radicacion no puede ser anterior a la fecha del documento.")
-        if self.serie and self.dependencia and self.serie.dependencia_id != self.dependencia_id:
-            raise ValidationError("La serie no pertenece a la dependencia seleccionada.")
         if self.subserie and self.serie and self.subserie.serie_id != self.serie_id:
             raise ValidationError("La subserie no pertenece a la serie seleccionada.")
         if self.tipo_documental and self.subserie and self.tipo_documental.subserie_id != self.subserie_id:

@@ -28,6 +28,18 @@
           <li><a href="/">Inicio</a></li>
           <li><a href="/dashboard/">Dashboard</a></li>
           <li><a href="/documentos/">Documentos</a></li>
+          <li><a href="{% url 'expediente_list' %}">Expedientes</a></li>
+          {% if user.is_authenticated %}
+          <li>
+            <form method="post" action="{% url 'logout' %}" class="nav-logout">
+              {% csrf_token %}
+              <button type="submit" class="secondary">Cerrar sesión</button>
+            </form>
+          </li>
+          {% else %}
+          <li><a href="{% url 'login' %}">Iniciar sesión</a></li>
+          <li><a href="{% url 'signup' %}">Registrarme</a></li>
+          {% endif %}
         </ul>
       </nav>
     </header>

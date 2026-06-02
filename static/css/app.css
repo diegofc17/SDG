@@ -1,3 +1,9 @@
+/* ==========================================================================
+   SGD — Sistema de Gestión Documental
+   Hoja de estilos principal con diseño fluido, flexbox, y responsivo móvil.
+   ========================================================================== */
+
+/* === 1. Design Tokens =================================================== */
 :root {
   --sgd-green: #0b892f;
   --sgd-yellow: #f8db0b;
@@ -8,6 +14,7 @@
   --sgd-border: #d9d1ca;
   --sgd-surface: #fffdf9;
   --sgd-shadow: 0 22px 48px rgba(114, 68, 35, 0.12);
+  --sgd-shadow-sm: 0 4px 12px rgba(114, 68, 35, 0.08);
   --pico-background-color: var(--sgd-silver);
   --pico-color: var(--sgd-ink);
   --pico-primary: var(--sgd-green);
@@ -26,10 +33,23 @@
   --pico-muted-color: var(--sgd-muted);
   --pico-font-family-sans-serif: "Trebuchet MS", "Gill Sans", "Segoe UI", sans-serif;
   --sgd-font-display: "Palatino Linotype", "Book Antiqua", Georgia, serif;
+
+  /* Espaciados responsivos */
+  --space-card: 1.8rem;
+  --space-form: 1.5rem;
+  --radius-card: 24px;
+  --radius-btn: 999px;
+  --radius-input: 14px;
 }
 
+/* === 2. Base y Reset ==================================================== */
 * {
   box-sizing: border-box;
+}
+
+html {
+  font-size: 14.5px; /* Base global: 14.5px en escritorio */
+  scroll-behavior: smooth;
 }
 
 body {
@@ -42,16 +62,38 @@ body {
 
 .page-shell {
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
+main.container.page-content {
+  flex: 1;
+}
+
+/* === 3. Tipografía Responsiva ============================================ */
+h1 { font-size: clamp(1.4rem, 4vw, 2rem); }
+h2 { font-size: clamp(1.1rem, 3vw, 1.5rem); }
+h3 { font-size: clamp(0.95rem, 2.5vw, 1.2rem); }
+
+small {
+  color: var(--sgd-muted);
+}
+
+/* === 4. Barra de Navegación ============================================= */
 .topbar {
   padding-top: 1.25rem;
+  padding-bottom: 0;
 }
 
 .main-nav {
-  padding: 1rem 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  padding: 0.8rem 1.2rem;
   border: 1px solid rgba(114, 68, 35, 0.18);
-  border-radius: 24px;
+  border-radius: var(--radius-card);
   background:
     linear-gradient(135deg, rgba(114, 68, 35, 0.96), rgba(83, 49, 25, 0.96));
   box-shadow: var(--sgd-shadow);
@@ -67,42 +109,57 @@ body {
   text-decoration: none;
 }
 
+/* Listas del nav */
+.main-nav > ul {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
 .brand-mark {
   display: inline-flex;
   align-items: center;
-  gap: 0.9rem;
+  gap: 0.75rem;
+  text-decoration: none;
 }
 
 .brand-logo {
-  width: 4.35rem;
-  height: 4.35rem;
+  width: 3.8rem;
+  height: 3.8rem;
   object-fit: contain;
   border-radius: 50%;
   background: rgba(255, 249, 242, 0.08);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16);
   flex-shrink: 0;
 }
 
 .brand-copy {
   display: inline-flex;
   flex-direction: column;
-  gap: 0.1rem;
-  line-height: 1.05;
+  gap: 0.05rem;
+  line-height: 1.1;
 }
 
 .brand-copy strong {
   font-family: var(--sgd-font-display);
-  font-size: 1.18rem;
+  font-size: 1.05rem;
+  color: #fff9f2;
 }
 
 .brand-copy small {
-  color: rgba(255, 249, 242, 0.8);
+  color: rgba(255, 249, 242, 0.78);
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  font-size: 0.64rem;
 }
 
+/* === 5. Contenido Principal ============================================= */
 .page-content {
-  padding-top: 2rem;
+  padding-top: 1.75rem;
   padding-bottom: 2rem;
 }
 
@@ -113,6 +170,7 @@ body {
   color: var(--sgd-terracotta);
 }
 
+/* === 6. Paneles y Tarjetas ============================================== */
 .hero-panel,
 .dashboard-panel,
 .auth-panel,
@@ -120,7 +178,7 @@ body {
 article,
 form {
   border: 1px solid rgba(114, 68, 35, 0.12);
-  border-radius: 24px;
+  border-radius: var(--radius-card);
   background: rgba(255, 253, 249, 0.9);
   box-shadow: var(--sgd-shadow);
 }
@@ -129,7 +187,7 @@ form {
 .dashboard-panel,
 .auth-panel,
 .content-card {
-  padding: 1.8rem;
+  padding: var(--space-card);
 }
 
 .hero-panel {
@@ -149,6 +207,7 @@ form {
   border-radius: 50%;
   background: rgba(248, 219, 11, 0.28);
   filter: blur(4px);
+  pointer-events: none;
 }
 
 .hero-panel h1,
@@ -159,77 +218,103 @@ form {
   position: relative;
 }
 
+/* === 7. Acciones Hero =================================================== */
 .hero-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.9rem;
-  margin-top: 1.5rem;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
 }
 
-.hero-actions .secondary {
+.hero-panel .hero-actions .secondary {
   background: rgba(255, 253, 249, 0.15);
   border-color: rgba(255, 253, 249, 0.36);
   color: #fffef8;
 }
 
+/* === 8. Elementos Decorativos =========================================== */
 .section-kicker {
   display: inline-block;
-  margin-bottom: 0.7rem;
-  padding: 0.35rem 0.7rem;
-  border-radius: 999px;
+  margin-bottom: 0.6rem;
+  padding: 0.28rem 0.65rem;
+  border-radius: var(--radius-btn);
   background: rgba(248, 219, 11, 0.18);
   color: var(--sgd-terracotta);
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  font-size: 0.78rem;
+  font-size: 0.73rem;
 }
 
 .info-strip {
-  margin: 1rem 0 1.5rem;
-  padding: 0.85rem 1rem;
-  border-left: 5px solid var(--sgd-green);
-  border-radius: 14px;
-  background: rgba(11, 137, 47, 0.08);
-}
-
-form {
-  padding: 1.5rem;
-}
-
-input,
-select,
-textarea {
-  border-radius: 14px !important;
-}
-
-button,
-[role="button"],
-input[type="submit"] {
-  border-radius: 999px !important;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-}
-
-small {
-  color: var(--sgd-muted);
+  margin: 0.85rem 0 1.25rem;
+  padding: 0.75rem 0.9rem;
+  border-left: 4px solid var(--sgd-green);
+  border-radius: 12px;
+  background: rgba(11, 137, 47, 0.07);
+  font-size: 0.9rem;
 }
 
 .field-note {
   display: inline-block;
   margin-left: 0.4rem;
-  padding: 0.12rem 0.5rem;
-  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+  border-radius: var(--radius-btn);
   background: rgba(248, 219, 11, 0.18);
   color: var(--sgd-terracotta);
-  font-size: 0.78rem;
+  font-size: 0.73rem;
   font-weight: 800;
   letter-spacing: 0.02em;
 }
 
+/* === 9. Formularios ===================================================== */
+form {
+  padding: var(--space-form);
+}
+
+.nav-logout,
+.inline-form {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.nav-logout button,
+.inline-form button {
+  margin: 0;
+}
+
+input,
+select,
+textarea {
+  border-radius: var(--radius-input) !important;
+  font-size: 0.9rem !important;
+}
+
+button,
+[role="button"],
+input[type="submit"] {
+  border-radius: var(--radius-btn) !important;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  font-size: 0.88rem;
+}
+
+/* Input file amigable en móvil */
+input[type="file"] {
+  padding: 0.55rem 0.8rem;
+  font-size: 0.82rem !important;
+  cursor: pointer;
+  width: 100%;
+}
+
+/* === 10. Tablas ========================================================= */
 table {
   display: block;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   border: 1px solid rgba(114, 68, 35, 0.1);
   border-radius: 20px;
   background: rgba(255, 253, 249, 0.94);
@@ -240,6 +325,7 @@ thead th {
   background: rgba(114, 68, 35, 0.92);
   color: #fff7ef;
   border-bottom: none;
+  white-space: nowrap;
 }
 
 tbody tr:nth-child(even) {
@@ -251,40 +337,73 @@ tbody td a {
   color: var(--sgd-green);
 }
 
-.detail-meta {
-  display: grid;
-  gap: 1rem;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+/* === 11. Panel de Búsqueda ============================================== */
+.search-panel {
+  margin: 1rem 0 1.4rem;
+  padding: 1rem;
+  background: rgba(248, 219, 11, 0.07);
+  border: 1px solid rgba(114, 68, 35, 0.1);
+  border-radius: 18px;
 }
 
-.search-panel {
-  margin: 1.25rem 0 1.6rem;
-  padding: 1.2rem;
-  background: rgba(248, 219, 11, 0.08);
-  border: 1px solid rgba(114, 68, 35, 0.12);
+.search-panel.is-collapsed {
+  display: none;
+}
+
+/* Rejilla responsiva inteligente del buscador */
+.search-grid-main {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.6rem;
+  margin-bottom: 0.75rem;
+}
+
+.search-grid-secondary {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.6rem;
+  margin-bottom: 0.75rem;
+}
+
+.search-grid-dates {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.6rem;
+  margin-bottom: 0.75rem;
 }
 
 .search-actions {
   display: flex;
-  align-items: end;
-  gap: 0.75rem;
+  align-items: stretch;
+  gap: 0.6rem;
 }
 
 .search-actions [role="button"],
 .search-actions button {
   margin-bottom: 0;
+  flex: 1;
+  text-align: center;
 }
 
+/* === 12. Paginación ===================================================== */
 .pagination-bar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 1rem;
-  margin-top: 1.4rem;
-  padding-top: 0.9rem;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+  padding-top: 0.85rem;
   border-top: 1px solid rgba(114, 68, 35, 0.12);
+  flex-wrap: wrap;
 }
 
+.pagination-bar span {
+  font-size: 0.85rem;
+  color: var(--sgd-muted);
+  white-space: nowrap;
+}
+
+/* === 13. Vista Previa de Archivos ======================================= */
 .preview-frame,
 .preview-image {
   width: 100%;
@@ -294,35 +413,358 @@ tbody td a {
 }
 
 .preview-frame {
-  min-height: 720px;
+  min-height: 680px;
 }
 
+/* Botón de descarga/apertura nativa para móviles */
+.mobile-file-btn {
+  display: none;
+  width: 100%;
+  text-align: center;
+  margin-bottom: 1rem;
+  padding: 0.85rem 1rem;
+  background: var(--sgd-green);
+  color: #ffffff;
+  border-radius: var(--radius-btn);
+  font-weight: 800;
+  text-decoration: none;
+  font-size: 0.95rem;
+}
+
+/* === 14. Detalle de Documento =========================================== */
+.detail-meta {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  margin-top: 1.5rem;
+}
+
+.detail-action-bar {
+  display: flex;
+  gap: 0.75rem;
+  margin: 1rem 0;
+  flex-wrap: wrap;
+}
+
+/* === 15. Pie de Página ================================================== */
 .site-footer {
-  padding-bottom: 1.75rem;
+  padding-bottom: 1.5rem;
   color: var(--sgd-muted);
 }
 
 .site-footer p {
   margin: 0;
-  padding: 1rem 1.1rem;
-  border-radius: 18px;
+  padding: 0.85rem 1.1rem;
+  border-radius: 16px;
   background: rgba(255, 253, 249, 0.7);
   border: 1px solid rgba(114, 68, 35, 0.08);
+  font-size: 0.82rem;
+  text-align: center;
 }
 
-@media (max-width: 900px) {
-  .main-nav,
-  .main-nav ul {
-    gap: 0.9rem;
+/* ==========================================================================
+   FILAS MODERNAS DE DOCUMENTOS — Premium Row List
+   ========================================================================== */
+
+.document-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  margin-top: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.document-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255, 253, 249, 0.96);
+  border: 1px solid rgba(114, 68, 35, 0.12);
+  border-radius: 16px;
+  padding: 0.9rem 1.1rem;
+  box-shadow: 0 3px 10px rgba(114, 68, 35, 0.04);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  position: relative;
+  overflow: hidden;
+  gap: 1.2rem;
+}
+
+.document-row:hover {
+  transform: translateX(4px);
+  box-shadow: 0 8px 24px rgba(114, 68, 35, 0.09);
+  border-color: var(--sgd-green);
+}
+
+/* Indicador de estado — barra lateral de color */
+.document-row::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: var(--sgd-green);
+  border-radius: 4px 0 0 4px;
+}
+
+.document-row.estado-radicado::before   { background: var(--sgd-green); }
+.document-row.estado-en_tramite::before { background: #f0ad4e; }
+.document-row.estado-cerrado::before    { background: #d9534f; }
+.document-row.estado-archivado::before  { background: #0275d8; }
+
+/* --- Bloque Izquierdo --------------------------------------------------- */
+.row-left {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex: 1.3;
+  min-width: 0;
+}
+
+.row-file-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 11px;
+  background: rgba(114, 68, 35, 0.06);
+  color: var(--sgd-terracotta);
+  flex-shrink: 0;
+}
+
+.document-row.ext-pdf  .row-file-icon { background: rgba(219, 68, 85, 0.09); color: #db4455; }
+.document-row.ext-png  .row-file-icon,
+.document-row.ext-jpg  .row-file-icon,
+.document-row.ext-jpeg .row-file-icon { background: rgba(2, 117, 216, 0.09); color: #0275d8; }
+
+.row-text-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  min-width: 0;
+}
+
+.row-title {
+  font-family: var(--sgd-font-display);
+  font-size: 0.98rem;
+  font-weight: 700;
+  margin: 0;
+  line-height: 1.25;
+}
+
+.row-title a {
+  color: var(--sgd-terracotta);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.row-title a:hover {
+  color: var(--sgd-green);
+  text-decoration: underline;
+}
+
+.row-asunto-snippet {
+  font-size: 0.79rem;
+  color: var(--sgd-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row-uploader-info {
+  font-size: 0.7rem;
+  color: var(--sgd-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+/* --- Bloque Central: Clasificación TRD ---------------------------------- */
+.row-center {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex: 1.1;
+  min-width: 0;
+  border-left: 1px solid rgba(114, 68, 35, 0.08);
+  border-right: 1px solid rgba(114, 68, 35, 0.08);
+  padding: 0 1rem;
+}
+
+.trd-breadcrumbs {
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
+.trd-breadcrumb-item {
+  color: var(--sgd-ink);
+  word-break: break-word;
+}
+
+.trd-breadcrumb-label {
+  font-weight: 700;
+  color: var(--sgd-muted);
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: block;
+  margin-bottom: 0.1rem;
+}
+
+/* --- Bloque Derecho: Badges, Fecha y Botones ---------------------------- */
+.row-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  flex-shrink: 0;
+}
+
+.row-badges-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.3rem;
+}
+
+.row-badges-row {
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.row-radicado-tag {
+  font-family: monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.12rem 0.45rem;
+  border-radius: 6px;
+  background: rgba(11, 137, 47, 0.06);
+  color: var(--sgd-green);
+  border: 1px solid rgba(11, 137, 47, 0.12);
+  white-space: nowrap;
+}
+
+.row-radicado-tag.none {
+  background: rgba(110, 101, 95, 0.06);
+  color: var(--sgd-muted);
+  border: 1px solid rgba(110, 101, 95, 0.12);
+}
+
+.badge {
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0.12rem 0.42rem;
+  border-radius: var(--radius-btn);
+  display: inline-flex;
+  white-space: nowrap;
+}
+
+.badge-estado-radicado  { background: rgba(11, 137, 47, 0.08);  color: var(--sgd-green); }
+.badge-estado-en_tramite { background: rgba(240, 173, 78, 0.1); color: #d47a00; }
+.badge-estado-cerrado   { background: rgba(217, 83, 79, 0.08);  color: #c9302c; }
+.badge-estado-archivado { background: rgba(2, 117, 216, 0.08);  color: #025aa5; }
+
+.badge-soporte-digital { background: rgba(11, 137, 47, 0.06);   color: var(--sgd-green); }
+.badge-soporte-fisico  { background: rgba(114, 68, 35, 0.06);   color: var(--sgd-terracotta); }
+.badge-soporte-hibrido { background: rgba(156, 39, 176, 0.06);  color: #7b1fa2; }
+
+.row-date-info {
+  display: flex;
+  flex-direction: column;
+  text-align: right;
+  font-size: 0.73rem;
+  line-height: 1.3;
+  min-width: 80px;
+}
+
+.date-label {
+  font-size: 0.64rem;
+  font-weight: 700;
+  color: var(--sgd-muted);
+  text-transform: uppercase;
+}
+
+.date-value {
+  color: var(--sgd-ink);
+}
+
+.row-actions-col {
+  display: flex;
+  align-items: center;
+}
+
+.row-action-button {
+  font-size: 0.7rem;
+  padding: 0.28rem 0.75rem;
+  margin: 0;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   RESPONSIVE — Tablet: ≤992px
+   ========================================================================== */
+@media (max-width: 992px) {
+  :root {
+    --space-card: 1.5rem;
   }
 
+  .document-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.85rem;
+    padding: 1rem;
+  }
+
+  .document-row:hover {
+    transform: translateY(-2px);
+  }
+
+  .row-left {
+    width: 100%;
+  }
+
+  .row-center {
+    border-left: none;
+    border-right: none;
+    padding: 0.6rem 0;
+    border-top: 1px dashed rgba(114, 68, 35, 0.1);
+    border-bottom: 1px dashed rgba(114, 68, 35, 0.1);
+  }
+
+  .row-right {
+    justify-content: space-between;
+    width: 100%;
+    align-items: flex-end;
+  }
+
+  .row-badges-col {
+    align-items: flex-start;
+  }
+
+  .row-date-info {
+    text-align: left;
+  }
+}
+
+/* ==========================================================================
+   RESPONSIVE — Desktop mediano: ≤900px
+   ========================================================================== */
+@media (max-width: 900px) {
   .brand-copy strong {
-    font-size: 1rem;
+    font-size: 0.92rem;
   }
 
   .brand-logo {
-    width: 3.7rem;
-    height: 3.7rem;
+    width: 3.2rem;
+    height: 3.2rem;
   }
 
   .page-content {
@@ -330,36 +772,276 @@ tbody td a {
   }
 }
 
-@media (max-width: 640px) {
+/* ==========================================================================
+   RESPONSIVE — Tablet: ≤768px — Navegación apilada
+   ========================================================================== */
+@media (max-width: 768px) {
   .topbar {
-    padding-top: 0.75rem;
+    padding-top: 0.65rem;
   }
 
+  /* Nav apilada verticalmente */
   .main-nav {
-    padding: 1rem;
-    border-radius: 20px;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 0.6rem !important;
+    padding: 0.85rem !important;
+    border-radius: 18px !important;
+  }
+
+  .main-nav > ul {
+    flex-direction: row !important;
+    justify-content: center !important;
+    flex-wrap: wrap !important;
+    width: 100% !important;
+    gap: 0.5rem !important;
+  }
+
+  /* Separador visual entre logo y links */
+  .main-nav > ul:last-child {
+    padding-top: 0.6rem !important;
+    border-top: 1px solid rgba(255, 249, 242, 0.15) !important;
+    margin-top: 0.1rem !important;
   }
 
   .brand-mark {
-    align-items: flex-start;
+    align-items: center !important;
+    text-align: center !important;
+    gap: 0.6rem !important;
   }
 
   .brand-logo {
-    width: 3.25rem;
-    height: 3.25rem;
+    width: 2.85rem !important;
+    height: 2.85rem !important;
   }
 
+  .brand-copy strong {
+    font-size: 0.88rem;
+  }
+
+  .brand-copy small {
+    font-size: 0.6rem;
+  }
+
+  /* Hero actions full-width en tablet */
   .hero-actions {
     flex-direction: column;
+    align-items: stretch;
   }
 
-  .preview-frame {
-    min-height: 460px;
+  .hero-actions a,
+  .hero-actions > form,
+  .hero-actions button {
+    width: 100%;
+    text-align: center;
   }
 
-  .search-actions,
+  /* Panel de búsqueda */
+  .search-grid-secondary,
+  .search-grid-dates {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ==========================================================================
+   RESPONSIVE — Móvil: ≤640px — Diseño táctil premium
+   ========================================================================== */
+@media (max-width: 640px) {
+  html {
+    font-size: 13.5px; /* Reduce la escala base un poco más para pantallas pequeñas */
+  }
+
+  :root {
+    --space-card: 1rem;
+    --space-form: 1rem;
+    --radius-card: 18px;
+  }
+
+  .topbar {
+    padding-top: 0.5rem;
+  }
+
+  .page-content {
+    padding-top: 1rem;
+  }
+
+  /* Panel de búsqueda compacto */
+  .search-panel {
+    padding: 0.75rem;
+    margin: 0.75rem 0 1rem;
+  }
+
+  /* En móviles, cada filtro secundario ocupa la mitad del ancho */
+  .search-grid-secondary,
+  .search-grid-dates {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+  }
+
+  /* El campo de búsqueda de texto ocupa toda la fila */
+  .search-grid-main {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .search-actions {
+    flex-direction: row;
+    gap: 0.5rem;
+  }
+
+  .search-actions button,
+  .search-actions a {
+    flex: 1;
+    text-align: center;
+    margin: 0;
+  }
+
+  /* Paginación vertical */
   .pagination-bar {
     flex-direction: column;
     align-items: stretch;
+    gap: 0.6rem;
+  }
+
+  .pagination-bar .hero-actions {
+    flex-direction: row;
+    gap: 0.5rem;
+  }
+
+  /* Preview */
+  .preview-frame {
+    min-height: 360px;
+  }
+
+  /* Botón de descarga nativa visible solo en móvil */
+  .mobile-file-btn {
+    display: block;
+  }
+
+  /* Detail meta: 1 columna */
+  .detail-meta {
+    grid-template-columns: 1fr;
+  }
+
+  /* === Filas de documentos → Tarjetas táctiles premium en móvil === */
+  .document-row {
+    padding: 0.85rem 0.9rem 0;
+    gap: 0;
+    border-radius: 14px;
+  }
+
+  /* Eliminar el hover de traslación en táctil */
+  .document-row:hover {
+    transform: none;
+    box-shadow: 0 6px 18px rgba(114, 68, 35, 0.1);
+  }
+
+  /* Sección izquierda: icono + texto sin restricción de ancho */
+  .row-left {
+    padding-bottom: 0.7rem;
+  }
+
+  /* TRD como cápsula */
+  .row-center {
+    background: rgba(248, 219, 11, 0.06);
+    border-radius: 10px;
+    padding: 0.55rem 0.7rem;
+    border: none;
+    border-top: 1px dashed rgba(114, 68, 35, 0.08);
+    border-bottom: 1px dashed rgba(114, 68, 35, 0.08);
+    margin: 0 -0.1rem;
+  }
+
+  /* Sección derecha en modo vertical apilado */
+  .row-right {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding: 0.7rem 0 0;
+    justify-content: flex-start;
+  }
+
+  .row-badges-col {
+    align-items: flex-start;
+    width: 100%;
+  }
+
+  .row-badges-row {
+    justify-content: flex-start;
+  }
+
+  .row-date-info {
+    text-align: left;
+    min-width: unset;
+    width: 100%;
+  }
+
+  /* Botón de acción de ancho completo, fijo en la base de la tarjeta */
+  .row-actions-col {
+    width: calc(100% + 1.8rem);
+    margin-left: -0.9rem;
+    margin-right: -0.9rem;
+    border-top: 1px solid rgba(114, 68, 35, 0.08);
+  }
+
+  .row-action-button {
+    display: block;
+    width: 100%;
+    text-align: center;
+    padding: 0.72rem 1rem;
+    border-radius: 0 0 14px 14px !important;
+    font-size: 0.82rem;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    background: rgba(11, 137, 47, 0.06);
+    color: var(--sgd-green);
+    border: none;
+    transition: background 0.2s ease;
+  }
+
+  .row-action-button:hover {
+    background: rgba(11, 137, 47, 0.12);
+    text-decoration: none;
+  }
+}
+
+/* ==========================================================================
+   RESPONSIVE — Móvil muy pequeño: ≤380px (Galaxy S8, iPhone SE)
+   ========================================================================== */
+@media (max-width: 380px) {
+  html {
+    font-size: 13px;
+  }
+
+  .brand-copy strong {
+    font-size: 0.8rem;
+  }
+
+  .brand-copy small {
+    display: none; /* Ocultamos el subtítulo en pantallas muy pequeñas */
+  }
+
+  .brand-logo {
+    width: 2.5rem !important;
+    height: 2.5rem !important;
+  }
+
+  /* Links de navegación más pequeños */
+  .main-nav > ul a {
+    font-size: 0.78rem;
+  }
+
+  /* Grids de búsqueda colapsan a 1 columna */
+  .search-grid-secondary,
+  .search-grid-dates {
+    grid-template-columns: 1fr;
+  }
+
+  /* Icono de archivo pequeño */
+  .row-file-icon {
+    width: 2.2rem;
+    height: 2.2rem;
+    border-radius: 9px;
   }
 }

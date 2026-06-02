@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}{% if is_edit %}Editar Expediente{% else %}Nuevo Expediente{% endif %} | SGD{% endblock %}
+{% block content %}
+<section class="content-card">
+  <span class="section-kicker">Expediente</span>
+  <h1>{% if is_edit %}Editar expediente{% else %}Nuevo expediente{% endif %}</h1>
+  {% if missing_dependencia %}
+  <div class="info-strip"><strong>No puedes crear expedientes aun.</strong> Solicita al administrador que te asigne una dependencia.</div>
+  {% else %}
+  <form method="post">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+
+    <label for="{{ form.codigo.id_for_label }}">Codigo</label>
+    {{ form.codigo }}
+    {{ form.codigo.errors }}
+
+    <label for="{{ form.nombre.id_for_label }}">Nombre</label>
+    {{ form.nombre }}
+    {{ form.nombre.errors }}
+
+    <label for="{{ form.descripcion.id_for_label }}">Descripcion</label>
+    {{ form.descripcion }}
+    {{ form.descripcion.errors }}
+
+    <label for="{{ form.serie.id_for_label }}">Serie documental</label>
+    {{ form.serie }}
+    {{ form.serie.errors }}
+
+    <label for="{{ form.subserie.id_for_label }}">Subserie documental</label>
+    {{ form.subserie }}
+    {{ form.subserie.errors }}
+
+    <div class="grid">
+      <div>
+        <label for="{{ form.estado.id_for_label }}">Estado</label>
+        {{ form.estado }}
+        {{ form.estado.errors }}
+      </div>
+      <div>
+        <label for="{{ form.fecha_apertura.id_for_label }}">Fecha apertura</label>
+        {{ form.fecha_apertura }}
+        {{ form.fecha_apertura.errors }}
+      </div>
+      <div>
+        <label for="{{ form.fecha_cierre.id_for_label }}">Fecha cierre <span class="field-note">Opcional</span></label>
+        {{ form.fecha_cierre }}
+        {{ form.fecha_cierre.errors }}
+      </div>
+    </div>
+
+    <button type="submit">Guardar expediente</button>
+  </form>
+
+  <script>
+    (function () {
+      const serieSelect = document.getElementById("id_serie");
+      const subserieSelect = document.getElementById("id_subserie");
+
+      if (!serieSelect || !subserieSelect) {
+        return;
+      }
+
+      const setOptions = (select, items, placeholder, selectedValue = "") => {
+        select.innerHTML = "";
+        const defaultOption = document.createElement("option");
+        defaultOption.value = "";
+        defaultOption.textContent = placeholder;
+        select.appendChild(defaultOption);
+
+        items.forEach((item) => {
+          const option = document.createElement("option");
+          option.value = item.id;
+          option.textContent = item.name;
+          if (String(item.id) === String(selectedValue)) {
+            option.selected = true;
+          }
+          select.appendChild(option);
+        });
+      };
+
+      const resetSelect = (select, placeholder) => {
+        select.innerHTML = "";
+        const option = document.createElement("option");
+        option.value = "";
+        option.textContent = placeholder;
+        select.appendChild(option);
+      };
+
+      const fetchOptions = async (url) => {
+        const response = await fetch(url, {
+          headers: { "X-Requested-With": "XMLHttpRequest" }
+        });
+        if (!response.ok) {
+          return [];
+        }
+        const data = await response.json();
+        return data.results || [];
+      };
+
+      const loadSubseries = async () => {
+        const serieId = serieSelect.value;
+        const selectedSubserie = subserieSelect.value;
+        resetSelect(subserieSelect, "Selecciona una subserie");
+        if (!serieId) {
+          return;
+        }
+        const items = await fetchOptions(`/documentos/api/subseries/?serie_id=${serieId}`);
+        setOptions(subserieSelect, items, "Selecciona una subserie", selectedSubserie);
+      };
+
+      serieSelect.addEventListener("change", loadSubseries);
+
+      // If we are editing and have values, make sure the subseries list loads correctly on startup
+      if (serieSelect.value && !subserieSelect.value) {
+        loadSubseries();
+      }
+    })();
+  </script>
+  {% endif %}
+</section>
+{% endblock %}
