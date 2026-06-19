@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+{% block title %}Tablas de Retención Documental (TRD) | SGD{% endblock %}
+{% block content %}
+<section class="content-card">
+  <span class="section-kicker">Clasificación Archivística</span>
+  <h1>Tablas de Retención Documental (TRD)</h1>
+  <p>Consulte las dependencias, series, subseries y criterios de retención y disposición final aplicables para la gestión documental activa.</p>
+
+  {# ── Formulario de Filtro por Dependencia ─────────────────────────────── #}
+  <form method="get" class="inline-filter-form">
+    <div class="filter-field-wrapper">
+      <label for="dependencia-select"><strong>Filtrar por Dependencia</strong></label>
+      <select name="dependencia" id="dependencia-select" onchange="this.form.submit()">
+        <option value="">-- Todas las dependencias --</option>
+        {% for dep in dependencias %}
+          <option value="{{ dep.id }}" {% if selected_dep_id|stringformat:"s" == dep.id|stringformat:"s" %}selected{% endif %}>
+            {{ dep.code }} - {{ dep.name }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-actions-wrapper">
+      <a href="{% url 'trd_list' %}" role="button" class="secondary outline">Limpiar filtros</a>
+    </div>
+  </form>
+
+  {# ── Tabla Principal de TRD ────────────────────────────────────────────── #}
+  <div class="table-scroll-wrapper">
+    <table class="trd-table">
+      <thead>
+        <tr>
+          <th rowspan="2" class="col-code">Código</th>
+          <th rowspan="2" class="col-name">Serie / Subserie Documental</th>
+          <th colspan="2" class="col-retention">Retención (Años)</th>
+          <th colspan="4" class="col-disposition">Disposición Final</th>
+          <th rowspan="2" class="col-procedures">Procedimientos / Observaciones</th>
+        </tr>
+        <tr>
+          <th class="sub-col">Gestión</th>
+          <th class="sub-col">Central</th>
+          <th class="sub-col" title="Conservación Total">CT</th>
+          <th class="sub-col" title="Eliminación">E</th>
+          <th class="sub-col" title="Digitalización">D</th>
+          <th class="sub-col" title="Selección">S</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for sub in page_obj %}
+          <tr class="trd-row">
+            <td class="trd-code"><code>{{ sub.full_code }}</code></td>
+            <td class="trd-name">
+              <span class="trd-serie-breadcrumb">
+                {{ sub.serie.dependencia.code }} &rsaquo; {{ sub.serie.code }} {{ sub.serie.name }}
+              </span>
+              <span class="trd-subserie-title">{{ sub.name }}</span>
+            </td>
+            <td class="text-center"><strong>{{ sub.retention_management }}</strong></td>
+            <td class="text-center"><strong>{{ sub.retention_central }}</strong></td>
+            <td class="text-center">{% if sub.disposition_ct %}<span class="dispo-tag dispo-ct">CT</span>{% else %}-{% endif %}</td>
+            <td class="text-center">{% if sub.disposition_e %}<span class="dispo-tag dispo-e">E</span>{% else %}-{% endif %}</td>
+            <td class="text-center">{% if sub.disposition_d %}<span class="dispo-tag dispo-d">D</span>{% else %}-{% endif %}</td>
+            <td class="text-center">{% if sub.disposition_s %}<span class="dispo-tag dispo-s">S</span>{% else %}-{% endif %}</td>
+            <td class="trd-procedures">{{ sub.procedures|default:"-"|linebreaksbr }}</td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="9" class="text-center empty-state">
+              No hay subseries o tablas de retención registradas para la selección actual.
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {# ── Paginación ─────────────────────────────────────────────────────────── #}
+  {% if page_obj and page_obj.paginator.num_pages > 1 %}
+  <div class="pagination-bar" style="margin-top: 1.5rem;">
+    <span>Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+    <div class="hero-actions" style="margin-top:0;">
+      {% if page_obj.has_previous %}
+      <a href="?page={{ page_obj.previous_page_number }}&dependencia={{ selected_dep_id|default:'' }}" role="button" class="secondary">← Anterior</a>
+      {% endif %}
+      {% if page_obj.has_next %}
+      <a href="?page={{ page_obj.next_page_number }}&dependencia={{ selected_dep_id|default:'' }}" role="button" class="secondary">Siguiente →</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</section>
+
+<style>
+  /* Filtros inline */
+  .inline-filter-form {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-end;
+    margin-bottom: 1.5rem;
+    padding: 1.25rem;
+    background: rgba(114, 68, 35, 0.04);
+    border: 1px solid rgba(114, 68, 35, 0.08);
+    border-radius: 18px;
+    flex-wrap: wrap;
+  }
+  
+  .filter-field-wrapper {
+    flex: 1;
+    min-width: 280px;
+    margin-bottom: 0;
+  }
+  
+  .filter-field-wrapper label {
+    display: block;
+    margin-bottom: 0.4rem;
+    font-size: 0.85rem;
+    color: var(--sgd-terracotta);
+  }
+  
+  .filter-field-wrapper select {
+    margin-bottom: 0;
+  }
+
+  .filter-actions-wrapper {
+    margin-bottom: 0;
+  }
+
+  .filter-actions-wrapper a {
+    margin-bottom: 0;
+  }
+
+  /* Tabla de Retención Documental */
+  .table-scroll-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    border-radius: 20px;
+    box-shadow: var(--sgd-shadow-sm);
+    border: 1px solid rgba(114, 68, 35, 0.12);
+  }
+
+  .trd-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0;
+    font-size: 0.88rem;
+    background: #ffffff;
+  }
+
+  .trd-table thead th {
+    text-align: center;
+    font-weight: 800;
+    background: linear-gradient(135deg, rgba(114, 68, 35, 0.95), rgba(83, 49, 25, 0.95));
+    color: #fffaf4;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    padding: 0.6rem 0.8rem;
+  }
+
+  .trd-table thead th.sub-col {
+    font-size: 0.72rem;
+    background: rgba(114, 68, 35, 0.92);
+    padding: 0.4rem 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .trd-row:hover {
+    background: rgba(11, 137, 47, 0.03) !important;
+  }
+
+  .trd-row td {
+    padding: 0.75rem 0.85rem;
+    border-bottom: 1px solid rgba(114, 68, 35, 0.08);
+    vertical-align: middle;
+  }
+
+  .trd-code {
+    text-align: center;
+    font-family: monospace;
+    font-weight: 700;
+    color: var(--sgd-terracotta);
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
+
+  .trd-name {
+    min-width: 220px;
+  }
+
+  .trd-serie-breadcrumb {
+    display: block;
+    font-size: 0.68rem;
+    color: var(--sgd-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.15rem;
+  }
+
+  .trd-subserie-title {
+    display: block;
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--sgd-ink);
+  }
+
+  .text-center {
+    text-align: center !important;
+  }
+
+  /* Etiquetas de Disposición Final */
+  .dispo-tag {
+    display: inline-block;
+    font-size: 0.68rem;
+    font-weight: 900;
+    padding: 0.12rem 0.4rem;
+    border-radius: 4px;
+    color: #ffffff;
+    text-transform: uppercase;
+  }
+
+  .dispo-ct { background: var(--sgd-green); }
+  .dispo-e  { background: #d9534f; }
+  .dispo-d  { background: #0275d8; }
+  .dispo-s  { background: #f0ad4e; }
+
+  .trd-procedures {
+    font-size: 0.8rem;
+    color: var(--sgd-muted);
+    max-width: 320px;
+    line-height: 1.35;
+  }
+
+  .empty-state {
+    padding: 3rem !important;
+    color: var(--sgd-muted);
+    font-size: 0.95rem;
+  }
+
+  @media (max-width: 768px) {
+    .inline-filter-form {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.8rem;
+    }
+    
+    .filter-field-wrapper {
+      min-width: unset;
+      width: 100%;
+    }
+
+    .filter-actions-wrapper a {
+      width: 100%;
+      text-align: center;
+    }
+  }
+</style>
+{% endblock %}

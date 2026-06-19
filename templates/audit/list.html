@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+{% block title %}Auditoría y Control | SGD{% endblock %}
+{% block content %}
+<section class="content-card">
+  <span class="section-kicker">Panel de Control</span>
+  <h1>Historial de Auditoría</h1>
+  <p>Registro y trazabilidad de acciones realizadas por los usuarios en la plataforma.</p>
+
+  <div class="hero-actions" style="margin-bottom: 1.5rem;">
+    <a href="{% url 'audit_export' %}?format=csv&{{ request.GET.urlencode }}" role="button" class="secondary">Exportar CSV</a>
+    <a href="{% url 'audit_export' %}?format=xlsx&{{ request.GET.urlencode }}" role="button" class="secondary">Exportar Excel</a>
+    <button type="button" class="secondary" id="toggle-search" aria-expanded="false" aria-controls="search-panel">Filtrar registros</button>
+  </div>
+
+  {# ── Formulario de búsqueda/filtrado ── #}
+  <form method="get" class="search-panel is-collapsed" id="search-panel" style="margin-top: 1rem; margin-bottom: 1.5rem;">
+    <div class="form-grid-three">
+      <div>
+        <label for="{{ form.usuario.id_for_label }}">Usuario</label>
+        {{ form.usuario }}
+      </div>
+      <div>
+        <label for="{{ form.dependencia.id_for_label }}">Dependencia</label>
+        {{ form.dependencia }}
+      </div>
+      <div>
+        <label for="{{ form.modulo.id_for_label }}">Módulo</label>
+        {{ form.modulo }}
+      </div>
+    </div>
+
+    <div class="form-grid-three" style="margin-top: 0.5rem;">
+      <div>
+        <label for="{{ form.accion.id_for_label }}">Acción</label>
+        {{ form.accion }}
+      </div>
+      <div>
+        <label for="{{ form.fecha_desde.id_for_label }}">Fecha desde</label>
+        {{ form.fecha_desde }}
+      </div>
+      <div>
+        <label for="{{ form.fecha_hasta.id_for_label }}">Fecha hasta</label>
+        {{ form.fecha_hasta }}
+      </div>
+    </div>
+
+    <div class="search-actions" style="margin-top: 1rem; display: flex; gap: 0.5rem;">
+      <button type="submit" style="flex: 1;">Aplicar filtros</button>
+      <a href="{% url 'audit_list' %}" role="button" class="secondary" style="flex: 1; text-align: center;">Limpiar</a>
+    </div>
+  </form>
+
+  <script>
+    (function () {
+      const toggle = document.getElementById("toggle-search");
+      const panel = document.getElementById("search-panel");
+      if (!toggle || !panel) return;
+
+      const params = new URLSearchParams(window.location.search);
+      const hasFilters =
+        (params.get("usuario") || "").trim() ||
+        (params.get("dependencia") || "").trim() ||
+        (params.get("modulo") || "").trim() ||
+        (params.get("accion") || "").trim() ||
+        (params.get("fecha_desde") || "").trim() ||
+        (params.get("fecha_hasta") || "").trim();
+
+      const setOpen = (open) => {
+        panel.classList.toggle("is-collapsed", !open);
+        toggle.setAttribute("aria-expanded", open ? "true" : "false");
+        toggle.textContent = open ? "Ocultar filtros" : "Filtrar registros";
+      };
+
+      setOpen(Boolean(hasFilters));
+      toggle.addEventListener("click", () => {
+        setOpen(panel.classList.contains("is-collapsed"));
+      });
+    })();
+  </script>
+
+  {# ── Tabla de registros ── #}
+  <div class="table-container">
+    <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+      <thead>
+        <tr>
+          <th>Fecha y hora</th>
+          <th>Usuario</th>
+          <th>Dependencia</th>
+          <th>Módulo</th>
+          <th>Acción</th>
+          <th>Descripción</th>
+          <th>Objeto</th>
+          <th>IP</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+        <tr>
+          <td style="white-space: nowrap;">{{ log.timestamp|date:"Y-m-d H:i:s" }}</td>
+          <td>
+            {% if log.user %}
+              <strong>{{ log.user.username }}</strong>
+            {% else %}
+              <span class="anon-user">Anónimo</span>
+            {% endif %}
+          </td>
+          <td>{{ log.dependencia.name|default:"-" }}</td>
+          <td style="white-space: nowrap;">
+            <span class="badge-module module-{{ log.module|lower }}">
+              {{ log.get_module_display }}
+            </span>
+          </td>
+          <td style="white-space: nowrap;">
+            <span class="badge-action action-{{ log.action|lower }}">
+              {{ log.get_action_display }}
+            </span>
+          </td>
+          <td>{{ log.description }}</td>
+          <td style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ log.object_repr }}">
+            {% if log.object_repr %}
+              {{ log.object_repr }}
+              {% if log.object_id %}
+                <small class="obj-id">(ID: {{ log.object_id }})</small>
+              {% endif %}
+            {% else %}
+              -
+            {% endif %}
+          </td>
+          <td><code class="ip-code">{{ log.ip_address|default:"-" }}</code></td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="8" style="text-align: center; padding: 2rem; color: var(--sgd-muted);">
+            No se encontraron registros de auditoría que coincidan con los filtros aplicados.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {# ── Paginación ── #}
+  {% if page_obj.has_other_pages %}
+  <div class="pagination-bar" style="margin-top: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+    <span>Mostrando registros {{ page_obj.start_index }} - {{ page_obj.end_index }} de {{ page_obj.paginator.count }}</span>
+    <div class="hero-actions" style="margin-top: 0;">
+      {% if page_obj.has_previous %}
+      <a href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode|cut:"page=" }}" role="button" class="secondary">← Anterior</a>
+      {% endif %}
+      {% if page_obj.has_next %}
+      <a href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode|cut:"page=" }}" role="button" class="secondary">Siguiente →</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</section>
+
+{# Estilos responsivos internos para esta vista #}
+<style>
+  .form-grid-three {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0 1rem;
+    margin-bottom: 0;
+  }
+
+  .anon-user {
+    color: var(--sgd-muted);
+    font-style: italic;
+  }
+
+  .obj-id {
+    font-size: 0.75rem;
+    color: var(--sgd-muted);
+    display: block;
+  }
+
+  .ip-code {
+    background: rgba(110, 101, 95, 0.08);
+    padding: 0.15rem 0.35rem;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.8rem;
+  }
+
+  .table-container {
+    overflow-x: auto;
+    border-radius: 12px;
+    border: 1px solid rgba(114, 68, 35, 0.12);
+  }
+
+  /* Badges específicos para Módulo */
+  .badge-module {
+    font-size: 0.65rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+    display: inline-block;
+  }
+  .module-auth { background: rgba(2, 117, 216, 0.08); color: #0275d8; }
+  .module-documentos { background: rgba(11, 137, 47, 0.08); color: var(--sgd-green); }
+  .module-expedientes { background: rgba(114, 68, 35, 0.08); color: var(--sgd-terracotta); }
+  .module-trd { background: rgba(156, 39, 176, 0.08); color: #7b1fa2; }
+  .module-sistema { background: rgba(110, 101, 95, 0.08); color: var(--sgd-muted); }
+
+  /* Badges específicos para Acción */
+  .badge-action {
+    font-size: 0.65rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    padding: 0.15rem 0.45rem;
+    border-radius: 12px;
+    display: inline-block;
+  }
+  .action-login { background: #e2f0d9; color: #385723; }
+  .action-logout { background: #fff2cc; color: #7f6000; }
+  .action-login_failed { background: #fce4d6; color: #c65911; }
+  .action-create { background: #deebd9; color: #375623; }
+  .action-update { background: #ddebf7; color: #1f4e78; }
+  .action-delete { background: #f8cbad; color: #c65911; }
+  .action-view { background: #e1d5e7; color: #6c8ebf; }
+  .action-download { background: #d5e8d4; color: #274e13; }
+  .action-export { background: #f3f3f3; color: #555555; }
+
+  @media (max-width: 768px) {
+    .form-grid-three {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+{% endblock %}

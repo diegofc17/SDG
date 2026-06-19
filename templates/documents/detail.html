@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Detalle Documento | SGD{% endblock %}
+{% block content %}
+<section class="content-card">
+  <a href="{% url 'document_list' %}">Volver al listado</a>
+  <span class="section-kicker" style="margin-top: 1rem;">Ficha documental</span>
+  <h1>{{ document.title }}</h1>
+  <p><strong>Radicado:</strong> {{ document.numero_radicado|default:"-" }}</p>
+  <p><strong>Asunto:</strong> {{ document.asunto|default:"-" }}</p>
+  {% if request.user.is_superuser %}
+  <div class="hero-actions">
+    <a href="{% url 'document_update' document.pk %}" role="button">Editar documento</a>
+  </div>
+  {% elif perms.documents.change_document and request.user.id == document.uploaded_by_id %}
+  <div class="hero-actions">
+    <a href="{% url 'document_update' document.pk %}" role="button">Editar documento</a>
+  </div>
+  {% endif %}
+</section>
+
+<div class="detail-meta" style="margin-top: 1.5rem;">
+  <article>
+    <h2>Informacion general</h2>
+    <p><strong>Estado:</strong> {{ document.estado_label }}</p>
+    <p><strong>Soporte:</strong> {{ document.soporte_label }}</p>
+    <p><strong>Fecha del documento:</strong> {{ document.fecha_documento|default:"-" }}</p>
+    <p><strong>Fecha de radicacion:</strong> {{ document.fecha_radicacion|default:"-" }}</p>
+    <p><strong>Usuario que cargo:</strong> {{ document.uploaded_by }}</p>
+    <p><strong>Fecha de carga:</strong> {{ document.created_at }}</p>
+  </article>
+
+  <article>
+    <h2>Clasificacion archivistica</h2>
+    <p><strong>Dependencia:</strong> {% if document.dependencia %}{{ document.dependencia.display_label }}{% else %}-{% endif %}</p>
+    <p><strong>Serie:</strong> {% if document.serie %}{{ document.serie.display_label }}{% else %}-{% endif %}</p>
+    <p><strong>Subserie:</strong> {% if document.subserie %}{{ document.subserie.display_label }}{% else %}-{% endif %}</p>
+  </article>
+</div>
+
+<article>
+  <h2>Contenido</h2>
+  <p><strong>Descripcion:</strong></p>
+  <p>{{ document.description|default:"Sin descripcion registrada." }}</p>
+  <p><strong>Observaciones:</strong></p>
+  <p>{{ document.observaciones|default:"Sin observaciones registradas." }}</p>
+</article>
+
+  <article>
+    <h2>Archivo</h2>
+  {% if document.file %}
+  <p><a href="{{ document.file.url }}" target="_blank" rel="noopener">Ver o descargar archivo</a></p>
+  {% if document.is_previewable_pdf %}
+  <iframe
+    src="{% url 'document_preview' document.pk %}"
+    title="Vista previa del documento"
+    class="preview-frame"
+  ></iframe>
+  {% elif document.is_previewable_image %}
+  <img
+    src="{% url 'document_preview' document.pk %}"
+    alt="Vista previa del documento"
+    class="preview-image"
+  >
+  {% else %}
+  <p>Este tipo de archivo no tiene vista previa integrada. Usa el enlace para abrirlo o descargarlo.</p>
+  {% endif %}
+  {% else %}
+  <p>No hay archivo cargado para este documento.</p>
+  {% endif %}
+</article>
+{% endblock %}

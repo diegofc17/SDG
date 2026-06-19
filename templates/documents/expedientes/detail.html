@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Expediente | SGD{% endblock %}
+{% block content %}
+<section class="content-card">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+    <a href="{% url 'expediente_list' %}" style="margin: 0;">Volver a expedientes</a>
+    {% if can_manage %}
+    <a href="{% url 'expediente_update' expediente.pk %}" role="button" class="secondary outline" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; margin: 0;">Editar expediente</a>
+    {% endif %}
+  </div>
+  <span class="section-kicker">Ficha de expediente</span>
+  <h1>{{ expediente.codigo }} - {{ expediente.nombre }}</h1>
+  <p><strong>Estado:</strong> {{ expediente.estado_label }}</p>
+  <p><strong>Dependencia:</strong> {% if expediente.dependencia %}{{ expediente.dependencia.display_label }}{% else %}-{% endif %}</p>
+  <p><strong>Serie:</strong> {% if expediente.serie %}{{ expediente.serie.display_label }}{% else %}-{% endif %}</p>
+  <p><strong>Subserie:</strong> {% if expediente.subserie %}{{ expediente.subserie.display_label }}{% else %}-{% endif %}</p>
+  <p><strong>Descripcion:</strong> {{ expediente.descripcion|default:"Sin descripcion." }}</p>
+</section>
+
+{% if can_manage %}
+<section class="content-card" style="margin-top: 1.5rem;">
+  <span class="section-kicker">Asociar documento</span>
+  <h2>Agregar documento existente</h2>
+  <form method="post" action="{% url 'expediente_add_document' expediente.pk %}">
+    {% csrf_token %}
+    {{ add_document_form.as_p }}
+    <button type="submit">Asociar documento</button>
+  </form>
+</section>
+{% endif %}
+
+<section class="content-card" style="margin-top: 1.5rem;">
+  <span class="section-kicker">Documentos asociados</span>
+  <h2>Documentos del expediente</h2>
+  <table style="margin-top: 0.8rem;">
+    <thead>
+      <tr>
+        <th>Radicado</th>
+        <th>Titulo</th>
+        <th>Estado</th>
+        <th>Soporte</th>
+        <th>Creado</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for document in documents %}
+      <tr>
+        <td>{% if document.numero_radicado %}{{ document.numero_radicado }}{% else %}-{% endif %}</td>
+        <td><a href="{% url 'document_detail' document.pk %}">{{ document.title }}</a></td>
+        <td>{{ document.estado_label }}</td>
+        <td>{{ document.soporte_label }}</td>
+        <td>{{ document.created_at }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5">Este expediente aun no tiene documentos asociados.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

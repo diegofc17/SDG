@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% block title %}{% if is_edit %}Editar Documento{% else %}Nuevo Documento{% endif %} | SGD{% endblock %}
+{% block content %}
+<section class="content-card">
+  <span class="section-kicker">Radicacion</span>
+  <h1>{% if is_edit %}Editar documento{% else %}Nuevo documento{% endif %}</h1>
+
+  {% if missing_dependencia %}
+  <div class="info-strip"><strong>No puedes crear documentos aun.</strong> Solicita al administrador que te asigne una dependencia.</div>
+  {% else %}
+  <div class="info-strip">
+    {% if is_edit %}
+    Actualiza la informacion registrada o reemplaza el archivo conservando la clasificacion TRD del documento.
+    {% else %}
+    Completa la clasificacion archivistica segun la TRD de tu dependencia antes de cargar el archivo.
+    {% endif %}
+  </div>
+
+  <form method="post" enctype="multipart/form-data" id="document-form">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+
+    {# ── Radicado y Título ─────────────────────────────────────────────── #}
+    <div class="form-grid-two">
+      <div>
+        <label for="{{ form.numero_radicado.id_for_label }}">Numero de radicado <span class="field-note">Opcional</span></label>
+        {{ form.numero_radicado }}
+        {% if form.numero_radicado.help_text %}<small>{{ form.numero_radicado.help_text }}</small>{% endif %}
+        {{ form.numero_radicado.errors }}
+      </div>
+      <div>
+        <label for="{{ form.title.id_for_label }}">Titulo</label>
+        {{ form.title }}
+        {{ form.title.errors }}
+      </div>
+    </div>
+
+    {# ── Asunto — ancho completo ────────────────────────────────────────── #}
+    <div>
+      <label for="{{ form.asunto.id_for_label }}">Asunto</label>
+      {{ form.asunto }}
+      {% if form.asunto.help_text %}<small>{{ form.asunto.help_text }}</small>{% endif %}
+      {{ form.asunto.errors }}
+    </div>
+
+    {# ── Fechas ─────────────────────────────────────────────────────────── #}
+    <div class="form-grid-two">
+      <div>
+        <label for="{{ form.fecha_documento.id_for_label }}">Fecha del documento</label>
+        {{ form.fecha_documento }}
+        {{ form.fecha_documento.errors }}
+      </div>
+      <div>
+        <label for="{{ form.fecha_radicacion.id_for_label }}">Fecha de radicacion <span class="field-note">Opcional</span></label>
+        {{ form.fecha_radicacion }}
+        {{ form.fecha_radicacion.errors }}
+      </div>
+    </div>
+
+    {# ── Estado y Soporte ───────────────────────────────────────────────── #}
+    <div class="form-grid-two">
+      <div>
+        <label for="{{ form.estado.id_for_label }}">Estado del documento</label>
+        {{ form.estado }}
+        {% if form.estado.help_text %}<small>{{ form.estado.help_text }}</small>{% endif %}
+        {{ form.estado.errors }}
+      </div>
+      <div>
+        <label for="{{ form.soporte.id_for_label }}">Tipo de soporte</label>
+        {{ form.soporte }}
+        {% if form.soporte.help_text %}<small>{{ form.soporte.help_text }}</small>{% endif %}
+        {{ form.soporte.errors }}
+      </div>
+    </div>
+
+    {# ── Descripción y Observaciones ────────────────────────────────────── #}
+    <div class="form-grid-two">
+      <div>
+        <label for="{{ form.description.id_for_label }}">Descripcion</label>
+        {{ form.description }}
+        {{ form.description.errors }}
+      </div>
+      <div>
+        <label for="{{ form.observaciones.id_for_label }}">Observaciones</label>
+        {{ form.observaciones }}
+        {{ form.observaciones.errors }}
+      </div>
+    </div>
+
+    {# ── Clasificación TRD y Expediente ────────────────────────────────── #}
+    <div class="form-grid-two">
+      <div>
+        <label for="{{ form.serie.id_for_label }}">Serie documental</label>
+        {{ form.serie }}
+        {{ form.serie.errors }}
+      </div>
+      <div>
+        <label for="{{ form.subserie.id_for_label }}">Subserie documental</label>
+        {{ form.subserie }}
+        {{ form.subserie.errors }}
+      </div>
+    </div>
+
+    <div class="form-grid-two">
+      <div>
+        <label for="{{ form.expediente.id_for_label }}">Expediente <span class="field-note">Opcional</span></label>
+        {{ form.expediente }}
+        {{ form.expediente.errors }}
+      </div>
+     
+    </div>
+
+    {# ── Archivo — ancho completo o en grid ──────────────────────────────── #}
+    <div style="margin-bottom: 1.5rem;">
+      <label for="{{ form.file.id_for_label }}">Archivo</label>
+      {% if is_edit and document.file %}
+      <p style="margin-bottom:0.4rem; font-size:0.85rem;"><strong>Archivo actual:</strong> <a href="{{ document.file.url }}" target="_blank" rel="noopener">Ver archivo cargado</a></p>
+      {% endif %}
+      {{ form.file }}
+      {{ form.file.errors }}
+    </div>
+
+    <button type="submit" style="width:100%; margin-top:0.5rem;">{% if is_edit %}Guardar cambios{% else %}Guardar documento{% endif %}</button>
+  </form>
+
+  <script>
+    (function () {
+      const serieSelect = document.getElementById("id_serie");
+      const subserieSelect = document.getElementById("id_subserie");
+
+      if (!serieSelect || !subserieSelect) {
+        return;
+      }
+
+      const setOptions = (select, items, placeholder, selectedValue = "") => {
+        select.innerHTML = "";
+        const defaultOption = document.createElement("option");
+        defaultOption.value = "";
+        defaultOption.textContent = placeholder;
+        select.appendChild(defaultOption);
+
+        items.forEach((item) => {
+          const option = document.createElement("option");
+          option.value = item.id;
+          option.textContent = item.name;
+          if (String(item.id) === String(selectedValue)) {
+            option.selected = true;
+          }
+          select.appendChild(option);
+        });
+      };
+
+      const resetSelect = (select, placeholder) => {
+        select.innerHTML = "";
+        const option = document.createElement("option");
+        option.value = "";
+        option.textContent = placeholder;
+        select.appendChild(option);
+      };
+
+      const fetchOptions = async (url) => {
+        const response = await fetch(url, {
+          headers: { "X-Requested-With": "XMLHttpRequest" }
+        });
+        if (!response.ok) {
+          return [];
+        }
+        const data = await response.json();
+        return data.results || [];
+      };
+
+      const loadSubseries = async () => {
+        const serieId = serieSelect.value;
+        const selectedSubserie = subserieSelect.value;
+        resetSelect(subserieSelect, "Selecciona una subserie");
+        if (!serieId) {
+          return;
+        }
+        const items = await fetchOptions(`/documentos/api/subseries/?serie_id=${serieId}`);
+        setOptions(subserieSelect, items, "Selecciona una subserie", selectedSubserie);
+      };
+
+      serieSelect.addEventListener("change", loadSubseries);
+
+      if (serieSelect.value) {
+        loadSubseries();
+      }
+    })();
+  </script>
+  {% endif %}
+</section>
+
+{# Estilos de formulario responsivos para esta vista #}
+<style>
+  .form-grid-two {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0 1rem;
+    margin-bottom: 0;
+  }
+
+  @media (max-width: 576px) {
+    .form-grid-two {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+{% endblock %}

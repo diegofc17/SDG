@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}Dashboard | SGD{% endblock %}
+{% block content %}
+<section class="dashboard-panel">
+  <span class="section-kicker">Panel</span>
+  <h1>Dashboard</h1>
+  <p>Desde aqui puedes acceder al modulo documental, consultar expedientes y continuar con la gestion archivistica.</p>
+  <div class="info-strip"><strong>Ambito:</strong> {{ scope_label }}</div>
+  <div class="hero-actions" style="margin-top: 1rem;">
+    <a href="/documentos/" role="button">Ir a documentos</a>
+    <a href="{% url 'expediente_list' %}" role="button" class="secondary">Gestionar expedientes</a>
+    {% if profile_dependencia %}
+    <a href="/documentos/nuevo/" role="button" class="secondary">Subir documento</a>
+    {% endif %}
+    <a href="/documentos/export/?format=csv" role="button" class="secondary">Exportar CSV</a>
+    <a href="/documentos/export/?format=xlsx" role="button" class="secondary">Exportar Excel</a>
+  </div>
+</section>
+
+<section class="grid" style="margin-top: 1.5rem;">
+  <article class="content-card">
+    <span class="section-kicker">Documentos</span>
+    <h2>Total</h2>
+    <p style="font-size: 2rem; margin: 0;"><strong>{{ totals.total }}</strong></p>
+    <p style="margin: 0.4rem 0 0; color: var(--sgd-muted);">
+      Con radicado: {{ totals.con_radicado }} | Sin radicado: {{ totals.sin_radicado }}
+    </p>
+  </article>
+  <article class="content-card">
+    <span class="section-kicker">Expedientes</span>
+    <h2>Total</h2>
+    <p style="font-size: 2rem; margin: 0;"><strong>{{ expedientes_totals.total }}</strong></p>
+    <p style="margin: 0.4rem 0 0; color: var(--sgd-muted); font-size: 0.85rem;">
+      Abiertos: {{ expedientes_totals.abiertos }} | Cerrados: {{ expedientes_totals.cerrados }} | Archivados: {{ expedientes_totals.archivados }}
+    </p>
+  </article>
+  <article class="content-card">
+    <span class="section-kicker">Estado</span>
+    <h2>Distribucion</h2>
+    <p style="margin: 0.3rem 0;">Radicado: <strong>{{ by_estado.radicado }}</strong></p>
+    <p style="margin: 0.3rem 0;">En tramite: <strong>{{ by_estado.en_tramite }}</strong></p>
+    <p style="margin: 0.3rem 0;">Cerrado: <strong>{{ by_estado.cerrado }}</strong></p>
+    <p style="margin: 0.3rem 0;">Archivado: <strong>{{ by_estado.archivado }}</strong></p>
+  </article>
+  <article class="content-card">
+    <span class="section-kicker">Soporte</span>
+    <h2>Distribucion</h2>
+    <p style="margin: 0.3rem 0;">Digital: <strong>{{ by_soporte.digital }}</strong></p>
+    <p style="margin: 0.3rem 0;">Fisico: <strong>{{ by_soporte.fisico }}</strong></p>
+    <p style="margin: 0.3rem 0;">Hibrido: <strong>{{ by_soporte.hibrido }}</strong></p>
+  </article>
+</section>
+
+<section class="content-card" style="margin-top: 1.5rem;">
+  <span class="section-kicker">Archivo por año</span>
+  <h2>Documentos por año del documento</h2>
+  {% if by_year %}
+  <table style="margin-top: 0.8rem;">
+    <thead>
+      <tr>
+        <th>Año</th>
+        <th>Cantidad</th>
+        <th>Dependencias</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in by_year %}
+      <tr>
+        <td>{{ item.year }}</td>
+        <td><strong>{{ item.total }}</strong></td>
+        <td>
+          {% for dep in item.dependencias %}
+            <div>{{ dep.dependencia }}: <strong>{{ dep.total }}</strong></div>
+          {% empty %}
+            -
+          {% endfor %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p style="color: var(--sgd-muted); margin: 0.7rem 0 0;">No hay documentos para agrupar por año.</p>
+  {% endif %}
+</section>
+
+<section class="content-card" style="margin-top: 1.5rem;">
+  <span class="section-kicker">Actividad</span>
+  <h2>Documentos recientes</h2>
+  {% if recientes %}
+  <table style="margin-top: 0.8rem;">
+    <thead>
+      <tr>
+        <th>Radicado</th>
+        <th>Titulo</th>
+        <th>Estado</th>
+        <th>Fecha</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for doc in recientes %}
+      <tr>
+        <td>{% if doc.numero_radicado %}{{ doc.numero_radicado }}{% else %}-{% endif %}</td>
+        <td><a href="{% url 'document_detail' doc.pk %}">{{ doc.title }}</a></td>
+        <td>{{ doc.estado_label }}</td>
+        <td>{{ doc.created_at }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p style="color: var(--sgd-muted); margin: 0.7rem 0 0;">No hay documentos para mostrar en este ambito.</p>
+  {% endif %}
+</section>
+
+{% if user.is_superuser and recent_logs %}
+<section class="content-card" style="margin-top: 1.5rem;">
+  <span class="section-kicker">Auditoría</span>
+  <h2>Actividad reciente del sistema</h2>
+  <table style="margin-top: 0.8rem; font-size: 0.85rem;">
+    <thead>
+      <tr>
+        <th>Fecha y hora</th>
+        <th>Usuario</th>
+        <th>Acción</th>
+        <th>Módulo</th>
+        <th>Descripción</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for log in recent_logs %}
+      <tr>
+        <td style="white-space: nowrap;">{{ log.timestamp|date:"Y-m-d H:i:s" }}</td>
+        <td><strong>{{ log.user.username|default:"Anónimo" }}</strong></td>
+        <td>{{ log.get_action_display }}</td>
+        <td>{{ log.get_module_display }}</td>
+        <td>{{ log.description }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div style="margin-top: 1rem; text-align: right;">
+    <a href="{% url 'audit_list' %}" role="button" class="secondary outline" style="font-size: 0.8rem; padding: 0.3rem 0.8rem;">Ver todos los logs de auditoría</a>
+  </div>
+</section>
+{% endif %}
+{% endblock %}
