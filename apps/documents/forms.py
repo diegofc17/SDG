@@ -34,17 +34,29 @@ class DocumentForm(forms.ModelForm):
 
         if self.instance.pk:
             self.fields["subserie"].queryset = SubserieDocumental.objects.filter(serie=self.instance.serie)
+            self.fields["expediente"].queryset = Expediente.objects.filter(serie=self.instance.serie).exclude(estado="archivado")
 
         serie_id = self.data.get("serie") or getattr(self.instance, "serie_id", None)
         if serie_id:
             self.fields["subserie"].queryset = SubserieDocumental.objects.filter(
                 serie_id=serie_id, is_active=True
             )
+            self.fields["expediente"].queryset = Expediente.objects.filter(
+                serie_id=serie_id
+            ).exclude(estado="archivado")
         else:
             self.fields["subserie"].queryset = SubserieDocumental.objects.none()
+            if dependencia is not None:
+                self.fields["expediente"].queryset = Expediente.objects.filter(
+                    dependencia=dependencia
+                ).exclude(estado="archivado")
+            else:
+                self.fields["expediente"].queryset = Expediente.objects.none()
 
         self.fields["serie"].label = "Serie documental"
         self.fields["subserie"].label = "Subserie documental"
+        self.fields["subserie"].required = False
+        self.fields["expediente"].empty_label = "Selecciona un expediente"
         self.fields["serie"].empty_label = "Selecciona una serie"
         self.fields["subserie"].empty_label = "Selecciona una subserie"
         self.fields["serie"].label_from_instance = lambda obj: obj.display_label
@@ -70,8 +82,6 @@ class DocumentForm(forms.ModelForm):
             self.add_error("fecha_documento", "Debes indicar la fecha del documento.")
         if not serie:
             self.add_error("serie", "Debes seleccionar una serie documental.")
-        if not subserie:
-            self.add_error("subserie", "Debes seleccionar una subserie documental.")
 
         if fecha_documento and fecha_radicacion and fecha_radicacion < fecha_documento:
             self.add_error("fecha_radicacion", "La fecha de radicacion no puede ser anterior a la del documento.")

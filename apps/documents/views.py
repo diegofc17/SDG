@@ -81,9 +81,9 @@ def _apply_document_search_filters(queryset, search_form):
     if soporte:
         queryset = queryset.filter(soporte=soporte)
     if fecha_desde:
-        queryset = queryset.filter(fecha_radicacion__gte=fecha_desde)
+        queryset = queryset.filter(fecha_documento__gte=fecha_desde)
     if fecha_hasta:
-        queryset = queryset.filter(fecha_radicacion__lte=fecha_hasta)
+        queryset = queryset.filter(fecha_documento__lte=fecha_hasta)
 
     return queryset
 
@@ -186,7 +186,12 @@ def document_export(request):
     buffer = BytesIO()
     wb.save(buffer)
     buffer.seek(0)
-
+# Crear response para XLSX
+    response = HttpResponse(
+        buffer.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
     # Registramos exportación
     log_action(
         request=request,
@@ -487,6 +492,18 @@ def subseries_by_serie(request):
 
 
 @login_required
+@permission_required("documents.view_document", raise_exception=True)
+def expedientes_by_serie(request):
+    serie_id = request.GET.get("serie_id")
+    if not serie_id:
+        return JsonResponse({"results": []})
+    queryset = Expediente.objects.filter(serie_id=serie_id).exclude(estado="archivado")
+    data = [{"id": item.id, "name": f"{item.codigo} - {item.nombre}"} for item in queryset.order_by("codigo", "nombre")]
+    return JsonResponse({"results": data})
+
+
+
+@login_required
 def trd_list(request):
     dependencias = Dependencia.objects.filter(is_active=True)
     selected_dep_id = request.GET.get("dependencia")
@@ -536,5 +553,61 @@ def tvd_list(request):
             "selected_seccion_id": selected_seccion_id,
         },
     )
+
+
+@login_required
+@permission_required("documents.delete_document", raise_exception=True)
+def document_delete(request, pk):
+    queryset, profile = _documents_for_user(request.user)
+    document = get_object_or_404(queryset, pk=pk)
+
+    if not request.user.is_superuser and document.uploaded_by_id != request.user.id:
+        raise PermissionDenied("Solo puedes eliminar documentos cargados por tu propio usuario.")
+
+    if request.method == "POST":
+        title = document.title
+        # Eliminar el archivo físico asociado
+        if document.file:
+            try:
+                document.file.delete(save=False)
+            except Exception:
+                pass
+        log_action(
+            request=request,
+            action="DELETE",
+            module="DOCUMENTOS",
+            description=f"Se eliminó el documento '{title}'.",
+            obj=document,
+        )
+        document.delete()
+        return redirect("document_list")
+
+    return redirect("document_detail", pk=pk)
+
+
+@login_required
+@permission_required("documents.delete_expediente", raise_exception=True)
+def expediente_delete(request, pk):
+    expedientes, profile = _expedientes_for_user(request.user)
+    expediente = get_object_or_404(expedientes, pk=pk)
+
+    if not request.user.is_superuser and expediente.created_by_id != request.user.id:
+        raise PermissionDenied("Solo puedes eliminar expedientes creados por tu propio usuario.")
+
+    if request.method == "POST":
+        nombre = expediente.nombre
+        codigo = expediente.codigo
+        log_action(
+            request=request,
+            action="DELETE",
+            module="EXPEDIENTES",
+            description=f"Se eliminó el expediente '{nombre}' (Código: {codigo}).",
+            obj=expediente,
+        )
+        expediente.delete()
+        return redirect("expediente_list")
+
+    return redirect("expediente_detail", pk=pk)
+
 
 

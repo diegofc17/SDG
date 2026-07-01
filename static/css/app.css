@@ -7,10 +7,10 @@
 :root {
   --sgd-green: #0b892f;
   --sgd-yellow: #f8db0b;
-  --sgd-terracotta: #724423;
+  --sgd-terracotta: #5d3316;
   --sgd-silver: #f4f1ee;
-  --sgd-ink: #1e1813;
-  --sgd-muted: #6f655f;
+  --sgd-ink: #110c08;
+  --sgd-muted: #0b0b0b;
   --sgd-border: #d9d1ca;
   --sgd-surface: #fffdf9;
   --sgd-shadow: 0 22px 48px rgba(114, 68, 35, 0.12);
@@ -24,8 +24,8 @@
   --pico-secondary: var(--sgd-terracotta);
   --pico-secondary-hover: #5f371b;
   --pico-secondary-focus: rgba(114, 68, 35, 0.18);
-  --pico-card-background-color: rgba(255, 253, 249, 0.92);
-  --pico-card-border-color: rgba(114, 68, 35, 0.12);
+  --pico-card-background-color: #eae4d8;
+  --pico-card-border-color: rgba(114, 68, 35, 0.22);
   --pico-form-element-background-color: #fffdfa;
   --pico-form-element-border-color: #ccbfb4;
   --pico-form-element-color: var(--sgd-ink);
@@ -177,9 +177,9 @@ small {
 .content-card,
 article,
 form {
-  border: 1px solid rgba(114, 68, 35, 0.12);
+  border: 1px solid rgba(114, 68, 35, 0.22);
   border-radius: var(--radius-card);
-  background: rgba(255, 253, 249, 0.9);
+  background: #eae4d8;
   box-shadow: var(--sgd-shadow);
 }
 
@@ -302,6 +302,19 @@ input[type="submit"] {
   font-size: 0.88rem;
 }
 
+.btn-danger,
+[role="button"].btn-danger {
+  background: #d9534f !important;
+  border-color: #d9534f !important;
+  color: #ffffff !important;
+}
+
+.btn-danger:hover,
+[role="button"].btn-danger:hover {
+  background: #c9302c !important;
+  border-color: #c9302c !important;
+}
+
 /* Input file amigable en móvil */
 input[type="file"] {
   padding: 0.55rem 0.8rem;
@@ -315,9 +328,9 @@ table {
   display: block;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
-  border: 1px solid rgba(114, 68, 35, 0.1);
+  border: 1px solid rgba(114, 68, 35, 0.2);
   border-radius: 20px;
-  background: rgba(255, 253, 249, 0.94);
+  background: #eae4d8;
   box-shadow: var(--sgd-shadow);
 }
 
@@ -329,7 +342,7 @@ thead th {
 }
 
 tbody tr:nth-child(even) {
-  background: rgba(244, 241, 238, 0.65);
+  background: rgba(114, 68, 35, 0.07);
 }
 
 tbody td a {
@@ -456,8 +469,8 @@ tbody td a {
   margin: 0;
   padding: 0.85rem 1.1rem;
   border-radius: 16px;
-  background: rgba(255, 253, 249, 0.7);
-  border: 1px solid rgba(114, 68, 35, 0.08);
+  background: rgba(234, 228, 216, 0.75);
+  border: 1px solid rgba(114, 68, 35, 0.18);
   font-size: 0.82rem;
   text-align: center;
 }

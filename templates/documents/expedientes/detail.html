@@ -2,11 +2,19 @@
 {% block title %}Expediente | SGD{% endblock %}
 {% block content %}
 <section class="content-card">
-  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.8rem;">
     <a href="{% url 'expediente_list' %}" style="margin: 0;">Volver a expedientes</a>
-    {% if can_manage %}
-    <a href="{% url 'expediente_update' expediente.pk %}" role="button" class="secondary outline" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; margin: 0;">Editar expediente</a>
-    {% endif %}
+    <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+      {% if can_manage %}
+      <a href="{% url 'expediente_update' expediente.pk %}" role="button" class="secondary outline" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; margin: 0;">Editar expediente</a>
+      {% endif %}
+      {% if request.user.is_superuser or perms.documents.delete_expediente and request.user.id == expediente.created_by_id %}
+      <form method="post" action="{% url 'expediente_delete' expediente.pk %}" style="margin: 0;" onsubmit="return confirm('¿Estás seguro de que deseas eliminar este expediente? Esta acción no se puede deshacer y desvinculará sus documentos asociados.');">
+        {% csrf_token %}
+        <button type="submit" class="btn-danger" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; margin: 0;">Eliminar expediente</button>
+      </form>
+      {% endif %}
+    </div>
   </div>
   <span class="section-kicker">Ficha de expediente</span>
   <h1>{{ expediente.codigo }} - {{ expediente.nombre }}</h1>

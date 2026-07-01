@@ -7,15 +7,18 @@
   <h1>{{ document.title }}</h1>
   <p><strong>Radicado:</strong> {{ document.numero_radicado|default:"-" }}</p>
   <p><strong>Asunto:</strong> {{ document.asunto|default:"-" }}</p>
-  {% if request.user.is_superuser %}
-  <div class="hero-actions">
-    <a href="{% url 'document_update' document.pk %}" role="button">Editar documento</a>
+  <div class="hero-actions" style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; margin-top: 1rem;">
+    {% if request.user.is_superuser or perms.documents.change_document and request.user.id == document.uploaded_by_id %}
+      <a href="{% url 'document_update' document.pk %}" role="button" style="margin: 0;">Editar documento</a>
+    {% endif %}
+
+    {% if request.user.is_superuser or perms.documents.delete_document and request.user.id == document.uploaded_by_id %}
+      <form method="post" action="{% url 'document_delete' document.pk %}" style="margin: 0;" onsubmit="return confirm('¿Estás seguro de que deseas eliminar este documento? Esta acción no se puede deshacer.');">
+        {% csrf_token %}
+        <button type="submit" class="btn-danger" style="margin: 0;">Eliminar documento</button>
+      </form>
+    {% endif %}
   </div>
-  {% elif perms.documents.change_document and request.user.id == document.uploaded_by_id %}
-  <div class="hero-actions">
-    <a href="{% url 'document_update' document.pk %}" role="button">Editar documento</a>
-  </div>
-  {% endif %}
 </section>
 
 <div class="detail-meta" style="margin-top: 1.5rem;">

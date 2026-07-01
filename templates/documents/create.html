@@ -95,7 +95,7 @@
         {{ form.serie.errors }}
       </div>
       <div>
-        <label for="{{ form.subserie.id_for_label }}">Subserie documental</label>
+        <label for="{{ form.subserie.id_for_label }}">Subserie documental <span class="field-note">Opcional</span></label>
         {{ form.subserie }}
         {{ form.subserie.errors }}
       </div>
@@ -127,12 +127,14 @@
     (function () {
       const serieSelect = document.getElementById("id_serie");
       const subserieSelect = document.getElementById("id_subserie");
+      const expedienteSelect = document.getElementById("id_expediente");
 
-      if (!serieSelect || !subserieSelect) {
+      if (!serieSelect) {
         return;
       }
 
       const setOptions = (select, items, placeholder, selectedValue = "") => {
+        if (!select) return;
         select.innerHTML = "";
         const defaultOption = document.createElement("option");
         defaultOption.value = "";
@@ -151,6 +153,7 @@
       };
 
       const resetSelect = (select, placeholder) => {
+        if (!select) return;
         select.innerHTML = "";
         const option = document.createElement("option");
         option.value = "";
@@ -169,21 +172,44 @@
         return data.results || [];
       };
 
-      const loadSubseries = async () => {
+      const loadSubseriesAndExpedientes = async () => {
         const serieId = serieSelect.value;
-        const selectedSubserie = subserieSelect.value;
-        resetSelect(subserieSelect, "Selecciona una subserie");
+        const selectedSubserie = subserieSelect ? subserieSelect.value : "";
+        const selectedExpediente = expedienteSelect ? expedienteSelect.value : "";
+
+        if (subserieSelect) resetSelect(subserieSelect, "Selecciona una subserie");
+        if (expedienteSelect) resetSelect(expedienteSelect, "Selecciona un expediente");
+
         if (!serieId) {
           return;
         }
-        const items = await fetchOptions(`/documentos/api/subseries/?serie_id=${serieId}`);
-        setOptions(subserieSelect, items, "Selecciona una subserie", selectedSubserie);
+
+        if (subserieSelect) {
+          const subseriesItems = await fetchOptions(`/documentos/api/subseries/?serie_id=${serieId}`);
+          setOptions(subserieSelect, subseriesItems, "Selecciona una subserie", selectedSubserie);
+        }
+
+        if (expedienteSelect) {
+          const expedientesItems = await fetchOptions(`/documentos/api/expedientes/?serie_id=${serieId}`);
+          setOptions(expedienteSelect, expedientesItems, "Selecciona un expediente", selectedExpediente);
+        }
       };
 
-      serieSelect.addEventListener("change", loadSubseries);
+      serieSelect.addEventListener("change", loadSubseriesAndExpedientes);
 
       if (serieSelect.value) {
-        loadSubseries();
+        // En edición, al cargar la página evitamos resetear el valor actual seleccionándolo de nuevo
+        const initialSubserie = subserieSelect ? subserieSelect.value : "";
+        const initialExpediente = expedienteSelect ? expedienteSelect.value : "";
+        
+        loadSubseriesAndExpedientes().then(() => {
+          if (subserieSelect && initialSubserie) {
+            subserieSelect.value = initialSubserie;
+          }
+          if (expedienteSelect && initialExpediente) {
+            expedienteSelect.value = initialExpediente;
+          }
+        });
       }
     })();
   </script>
