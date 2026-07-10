@@ -5,17 +5,17 @@ from .models import AuditLog
 @admin.register(AuditLog)
 class AuditLogAdmin(admin.ModelAdmin):
     list_display = (
-        "timestamp",
+        "fecha",
         "user",
         "dependencia",
         "action",
         "module",
         "description",
-        "ip_address",
+        "ip",
     )
-    list_filter = ("action", "module", "timestamp", "dependencia")
-    search_fields = ("user__username", "description", "object_repr", "ip_address")
-    date_hierarchy = "timestamp"
+    list_filter = ("action", "module", "fecha", "dependencia")
+    search_fields = ("user__username", "description", "object_repr", "ip")
+    date_hierarchy = "fecha"
 
     # Hacemos que sea de solo lectura en el admin para preservar la integridad de los logs
     def has_add_permission(self, request):

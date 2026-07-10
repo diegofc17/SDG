@@ -54,8 +54,9 @@ DATABASES = {
         "NAME": "sgd",
         "USER": "sgd",
         "PASSWORD": "Sgd2025#",
-        "HOST": "db",
+        "HOST": "localhost",
         "PORT": "5432",
+
     }
 }
 

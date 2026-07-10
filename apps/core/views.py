@@ -95,7 +95,7 @@ def dashboard(request):
     recent_logs = []
     if request.user.is_superuser:
         from apps.audit.models import AuditLog
-        recent_logs = AuditLog.objects.select_related("user", "dependencia").order_by("-timestamp")[:10]
+        recent_logs = AuditLog.objects.select_related("user", "dependencia").order_by("-fecha")[:10]
 
     return render(
         request,

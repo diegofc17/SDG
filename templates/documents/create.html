@@ -103,11 +103,26 @@
 
     <div class="form-grid-two">
       <div>
+        <label for="{{ form.tipo_documental.id_for_label }}">Tipo documental <span class="field-note">Opcional</span></label>
+        {{ form.tipo_documental }}
+        {{ form.tipo_documental.errors }}
+      </div>
+      <div>
         <label for="{{ form.expediente.id_for_label }}">Expediente <span class="field-note">Opcional</span></label>
         {{ form.expediente }}
         {{ form.expediente.errors }}
       </div>
-     
+    </div>
+
+    <div class="form-grid-two">
+      <div>
+        <label for="{{ form.tvd_subserie.id_for_label }}">Subserie TVD (Valoración Documental) <span class="field-note">Opcional</span></label>
+        {{ form.tvd_subserie }}
+        {{ form.tvd_subserie.errors }}
+      </div>
+      <div>
+        {# Espacio vacío #}
+      </div>
     </div>
 
     {# ── Archivo — ancho completo o en grid ──────────────────────────────── #}
@@ -127,6 +142,7 @@
     (function () {
       const serieSelect = document.getElementById("id_serie");
       const subserieSelect = document.getElementById("id_subserie");
+      const tipoDocumentalSelect = document.getElementById("id_tipo_documental");
       const expedienteSelect = document.getElementById("id_expediente");
 
       if (!serieSelect) {
@@ -172,6 +188,21 @@
         return data.results || [];
       };
 
+      const loadTiposDocumentales = async () => {
+        if (!tipoDocumentalSelect) return;
+        const subserieId = subserieSelect ? subserieSelect.value : "";
+        const selectedTipo = tipoDocumentalSelect.value;
+
+        resetSelect(tipoDocumentalSelect, "Selecciona un tipo documental");
+
+        if (!subserieId) {
+          return;
+        }
+
+        const tiposItems = await fetchOptions(`/documentos/api/tipos-documentales/?subserie_id=${subserieId}`);
+        setOptions(tipoDocumentalSelect, tiposItems, "Selecciona un tipo documental", selectedTipo);
+      };
+
       const loadSubseriesAndExpedientes = async () => {
         const serieId = serieSelect.value;
         const selectedSubserie = subserieSelect ? subserieSelect.value : "";
@@ -179,6 +210,7 @@
 
         if (subserieSelect) resetSelect(subserieSelect, "Selecciona una subserie");
         if (expedienteSelect) resetSelect(expedienteSelect, "Selecciona un expediente");
+        if (tipoDocumentalSelect) resetSelect(tipoDocumentalSelect, "Selecciona un tipo documental");
 
         if (!serieId) {
           return;
@@ -195,16 +227,28 @@
         }
       };
 
-      serieSelect.addEventListener("change", loadSubseriesAndExpedientes);
+      serieSelect.addEventListener("change", async () => {
+        await loadSubseriesAndExpedientes();
+      });
+
+      if (subserieSelect) {
+        subserieSelect.addEventListener("change", loadTiposDocumentales);
+      }
 
       if (serieSelect.value) {
         // En edición, al cargar la página evitamos resetear el valor actual seleccionándolo de nuevo
         const initialSubserie = subserieSelect ? subserieSelect.value : "";
         const initialExpediente = expedienteSelect ? expedienteSelect.value : "";
+        const initialTipo = tipoDocumentalSelect ? tipoDocumentalSelect.value : "";
         
         loadSubseriesAndExpedientes().then(() => {
           if (subserieSelect && initialSubserie) {
             subserieSelect.value = initialSubserie;
+            loadTiposDocumentales().then(() => {
+              if (tipoDocumentalSelect && initialTipo) {
+                tipoDocumentalSelect.value = initialTipo;
+              }
+            });
           }
           if (expedienteSelect && initialExpediente) {
             expedienteSelect.value = initialExpediente;

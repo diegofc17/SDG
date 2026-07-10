@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import Dependencia, Document, Expediente, SerieDocumental, SubserieDocumental
+from .models import Dependencia, Document, Expediente, SerieDocumental, SubserieDocumental, TipoDocumental, TVDSubserie
 
 
 class DocumentForm(forms.ModelForm):
@@ -8,6 +8,8 @@ class DocumentForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["serie"].queryset = SerieDocumental.objects.filter(is_active=True).select_related("dependencia")
         self.fields["subserie"].queryset = SubserieDocumental.objects.none()
+        self.fields["tipo_documental"].queryset = TipoDocumental.objects.none()
+        self.fields["tvd_subserie"].queryset = TVDSubserie.objects.filter(is_active=True).select_related("serie__seccion")
         self.fields["expediente"].queryset = Expediente.objects.none()
 
         # --- Multi-dependency: inject a selector when user has > 1 dependency ---
@@ -34,9 +36,12 @@ class DocumentForm(forms.ModelForm):
 
         if self.instance.pk:
             self.fields["subserie"].queryset = SubserieDocumental.objects.filter(serie=self.instance.serie)
+            self.fields["tipo_documental"].queryset = TipoDocumental.objects.filter(subserie=self.instance.subserie)
             self.fields["expediente"].queryset = Expediente.objects.filter(serie=self.instance.serie).exclude(estado="archivado")
 
         serie_id = self.data.get("serie") or getattr(self.instance, "serie_id", None)
+        subserie_id = self.data.get("subserie") or getattr(self.instance, "subserie_id", None)
+
         if serie_id:
             self.fields["subserie"].queryset = SubserieDocumental.objects.filter(
                 serie_id=serie_id, is_active=True
@@ -53,14 +58,28 @@ class DocumentForm(forms.ModelForm):
             else:
                 self.fields["expediente"].queryset = Expediente.objects.none()
 
+        if subserie_id:
+            self.fields["tipo_documental"].queryset = TipoDocumental.objects.filter(
+                subserie_id=subserie_id, is_active=True
+            )
+        else:
+            self.fields["tipo_documental"].queryset = TipoDocumental.objects.none()
+
         self.fields["serie"].label = "Serie documental"
         self.fields["subserie"].label = "Subserie documental"
         self.fields["subserie"].required = False
+        self.fields["tipo_documental"].label = "Tipo documental"
+        self.fields["tipo_documental"].required = False
+        self.fields["tvd_subserie"].label = "Subserie TVD"
+        self.fields["tvd_subserie"].required = False
         self.fields["expediente"].empty_label = "Selecciona un expediente"
         self.fields["serie"].empty_label = "Selecciona una serie"
         self.fields["subserie"].empty_label = "Selecciona una subserie"
+        self.fields["tipo_documental"].empty_label = "Selecciona un tipo documental"
+        self.fields["tvd_subserie"].empty_label = "Selecciona una subserie TVD"
         self.fields["serie"].label_from_instance = lambda obj: obj.display_label
         self.fields["subserie"].label_from_instance = lambda obj: obj.display_label
+        self.fields["tvd_subserie"].label_from_instance = lambda obj: obj.display_label
         self.fields["fecha_documento"].widget = forms.DateInput(attrs={"type": "date"})
         self.fields["fecha_radicacion"].widget = forms.DateInput(attrs={"type": "date"})
         self.fields["description"].widget = forms.Textarea(attrs={"rows": 3, "placeholder": "Escribe una breve descripción del documento..."})
@@ -77,6 +96,7 @@ class DocumentForm(forms.ModelForm):
         fecha_radicacion = cleaned_data.get("fecha_radicacion")
         serie = cleaned_data.get("serie")
         subserie = cleaned_data.get("subserie")
+        tipo_documental = cleaned_data.get("tipo_documental")
 
         if not fecha_documento:
             self.add_error("fecha_documento", "Debes indicar la fecha del documento.")
@@ -87,6 +107,8 @@ class DocumentForm(forms.ModelForm):
             self.add_error("fecha_radicacion", "La fecha de radicacion no puede ser anterior a la del documento.")
         if serie and subserie and subserie.serie_id != serie.id:
             self.add_error("subserie", "La subserie no pertenece a la serie seleccionada.")
+        if subserie and tipo_documental and tipo_documental.subserie_id != subserie.id:
+            self.add_error("tipo_documental", "El tipo documental no pertenece a la subserie seleccionada.")
 
         return cleaned_data
 
@@ -105,6 +127,8 @@ class DocumentForm(forms.ModelForm):
             "expediente",
             "serie",
             "subserie",
+            "tipo_documental",
+            "tvd_subserie",
             "file",
         ]
 
@@ -114,6 +138,7 @@ class ExpedienteForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["serie"].queryset = SerieDocumental.objects.filter(is_active=True).select_related("dependencia")
         self.fields["subserie"].queryset = SubserieDocumental.objects.none()
+        self.fields["tvd_subserie"].queryset = TVDSubserie.objects.filter(is_active=True).select_related("serie__seccion")
         self.fields["fecha_apertura"].widget = forms.DateInput(attrs={"type": "date"})
         self.fields["fecha_cierre"].widget = forms.DateInput(attrs={"type": "date"})
         self.fields["descripcion"].widget = forms.Textarea(attrs={"rows": 3})
@@ -141,8 +166,12 @@ class ExpedienteForm(forms.ModelForm):
 
         self.fields["serie"].empty_label = "Selecciona una serie"
         self.fields["subserie"].empty_label = "Selecciona una subserie"
+        self.fields["tvd_subserie"].empty_label = "Selecciona una subserie TVD"
         self.fields["serie"].label_from_instance = lambda obj: obj.display_label
         self.fields["subserie"].label_from_instance = lambda obj: obj.display_label
+        self.fields["tvd_subserie"].label_from_instance = lambda obj: obj.display_label
+        self.fields["tvd_subserie"].label = "Subserie TVD"
+        self.fields["tvd_subserie"].required = False
 
     def clean(self):
         cleaned_data = super().clean()
@@ -166,6 +195,7 @@ class ExpedienteForm(forms.ModelForm):
             "descripcion",
             "serie",
             "subserie",
+            "tvd_subserie",
             "estado",
             "fecha_apertura",
             "fecha_cierre",

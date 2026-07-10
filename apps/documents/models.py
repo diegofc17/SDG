@@ -28,6 +28,8 @@ class SerieDocumental(models.Model):
     dependencia = models.ForeignKey(Dependencia, on_delete=models.PROTECT, related_name="series")
     code = models.CharField(max_length=20)
     name = models.CharField(max_length=200)
+    retencion_archivo_gestion = models.PositiveSmallIntegerField("archivo de gestion", default=0)
+    retencion_archivo_central = models.PositiveSmallIntegerField("archivo central", default=0)
     is_active = models.BooleanField(default=True)
 
     class Meta:
@@ -92,6 +94,24 @@ class SubserieDocumental(models.Model):
         return ", ".join(flags) if flags else "-"
 
 
+class TipoDocumental(models.Model):
+    name = models.CharField("nombre", max_length=200)
+    is_required = models.BooleanField("requerido", default=False)
+    is_active = models.BooleanField("activo", default=True)
+    subserie = models.ForeignKey(
+        SubserieDocumental, on_delete=models.PROTECT, related_name="tipos", verbose_name="subserie"
+    )
+
+    class Meta:
+        ordering = ["subserie__serie__dependencia__code", "subserie__serie__code", "subserie__code", "name"]
+        unique_together = ("subserie", "name")
+        verbose_name = "tipo documental"
+        verbose_name_plural = "tipos documentales"
+
+    def __str__(self):
+        return f"{self.name} ({self.subserie.name})"
+
+
 class Expediente(models.Model):
     ESTADO_CHOICES = [
         ("abierto", "Abierto"),
@@ -110,6 +130,9 @@ class Expediente(models.Model):
     )
     subserie = models.ForeignKey(
         SubserieDocumental, on_delete=models.PROTECT, related_name="expedientes", null=True, blank=True
+    )
+    tvd_subserie = models.ForeignKey(
+        "TVDSubserie", on_delete=models.PROTECT, related_name="expedientes", null=True, blank=True, verbose_name="subserie TVD"
     )
     estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default="abierto", db_index=True)
     fecha_apertura = models.DateField(null=True, blank=True)
@@ -175,6 +198,12 @@ class Document(models.Model):
     subserie = models.ForeignKey(
         SubserieDocumental, on_delete=models.PROTECT, related_name="documents", null=True, blank=True
     )
+    tipo_documental = models.ForeignKey(
+        "TipoDocumental", on_delete=models.PROTECT, related_name="documents", null=True, blank=True, verbose_name="tipo documental"
+    )
+    tvd_subserie = models.ForeignKey(
+        "TVDSubserie", on_delete=models.PROTECT, related_name="documents", null=True, blank=True, verbose_name="subserie TVD"
+    )
 
     file = models.FileField(upload_to="documents/%Y/%m/")
     uploaded_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="documents")
@@ -196,6 +225,11 @@ class Document(models.Model):
             raise ValidationError("La fecha de radicacion no puede ser anterior a la fecha del documento.")
         if self.subserie and self.serie and self.subserie.serie_id != self.serie_id:
             raise ValidationError("La subserie no pertenece a la serie seleccionada.")
+        if self.tipo_documental:
+            if not self.subserie:
+                raise ValidationError("Debe seleccionar una subserie para asignar un tipo documental.")
+            if self.tipo_documental.subserie_id != self.subserie_id:
+                raise ValidationError("El tipo documental no pertenece a la subserie seleccionada.")
 
 
     def __str__(self):

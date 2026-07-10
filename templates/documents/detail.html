@@ -37,6 +37,8 @@
     <p><strong>Dependencia:</strong> {% if document.dependencia %}{{ document.dependencia.display_label }}{% else %}-{% endif %}</p>
     <p><strong>Serie:</strong> {% if document.serie %}{{ document.serie.display_label }}{% else %}-{% endif %}</p>
     <p><strong>Subserie:</strong> {% if document.subserie %}{{ document.subserie.display_label }}{% else %}-{% endif %}</p>
+    <p><strong>Tipo documental:</strong> {% if document.tipo_documental %}{{ document.tipo_documental.name }}{% else %}-{% endif %}</p>
+    <p><strong>Subserie TVD:</strong> {% if document.tvd_subserie %}{{ document.tvd_subserie.display_label }}{% else %}-{% endif %}</p>
   </article>
 </div>
 

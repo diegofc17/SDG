@@ -130,7 +130,7 @@
     <tbody>
       {% for log in recent_logs %}
       <tr>
-        <td style="white-space: nowrap;">{{ log.timestamp|date:"Y-m-d H:i:s" }}</td>
+        <td style="white-space: nowrap;">{{ log.fecha|date:"Y-m-d H:i:s" }}</td>
         <td><strong>{{ log.user.username|default:"Anónimo" }}</strong></td>
         <td>{{ log.get_action_display }}</td>
         <td>{{ log.get_module_display }}</td>

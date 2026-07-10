@@ -15,14 +15,14 @@ from django.views.decorators.clickjacking import xframe_options_exempt
 from apps.accounts.models import Profile
 
 from .forms import DocumentForm, DocumentSearchForm, ExpedienteDocumentForm, ExpedienteForm
-from .models import Dependencia, Document, Expediente, SubserieDocumental, TVDSeccion, TVDSerie, TVDSubserie
+from .models import Dependencia, Document, Expediente, SubserieDocumental, TVDSeccion, TVDSerie, TVDSubserie, TipoDocumental
 from apps.audit.utils import log_action
 
 
 def _documents_for_user(user):
     profile, _ = Profile.objects.get_or_create(user=user)
     queryset = Document.objects.select_related(
-        "dependencia", "expediente", "serie", "subserie", "uploaded_by"
+        "dependencia", "expediente", "serie", "subserie", "tipo_documental", "tvd_subserie", "uploaded_by"
     )
     if user.is_superuser:
         return queryset, profile
@@ -34,7 +34,7 @@ def _documents_for_user(user):
 
 def _expedientes_for_user(user):
     profile, _ = Profile.objects.get_or_create(user=user)
-    queryset = Expediente.objects.select_related("dependencia", "serie", "subserie", "created_by")
+    queryset = Expediente.objects.select_related("dependencia", "serie", "subserie", "tvd_subserie", "created_by")
     if user.is_superuser:
         return queryset, profile
     dep_ids = list(profile.get_dependencias_ids())
@@ -73,6 +73,8 @@ def _apply_document_search_filters(queryset, search_form):
             | Q(expediente__nombre__icontains=q)
             | Q(serie__name__icontains=q)
             | Q(subserie__name__icontains=q)
+            | Q(tipo_documental__name__icontains=q)
+            | Q(tvd_subserie__name__icontains=q)
         )
         queryset = queryset.order_by("match_priority", "-fecha_radicacion", "-created_at")
 
@@ -133,6 +135,8 @@ def document_export(request):
         ("expediente", "Expediente"),
         ("serie", "Serie"),
         ("subserie", "Subserie"),
+        ("tipo_documental", "Tipo Documental"),
+        ("tvd_subserie", "Subserie TVD"),
         ("uploaded_by", "Usuario"),
         ("created_at", "Creado"),
     ]
@@ -488,6 +492,15 @@ def subseries_by_serie(request):
     serie_id = request.GET.get("serie_id")
     queryset = SubserieDocumental.objects.filter(is_active=True, serie_id=serie_id)
     data = [{"id": item.id, "name": item.display_label} for item in queryset.order_by("code", "name")]
+    return JsonResponse({"results": data})
+
+
+@login_required
+@permission_required("documents.add_document", raise_exception=True)
+def tipos_documentales_by_subserie(request):
+    subserie_id = request.GET.get("subserie_id")
+    queryset = TipoDocumental.objects.filter(is_active=True, subserie_id=subserie_id)
+    data = [{"id": item.id, "name": item.name} for item in queryset.order_by("name")]
     return JsonResponse({"results": data})
 
 

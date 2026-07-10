@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Dependencia, Document, SerieDocumental, SubserieDocumental, TVDSeccion, TVDSerie, TVDSubserie
+from .models import Dependencia, Document, SerieDocumental, SubserieDocumental, TVDSeccion, TVDSerie, TVDSubserie, TipoDocumental
 
 
 @admin.register(Dependencia)
@@ -31,6 +31,13 @@ class SubserieDocumentalAdmin(admin.ModelAdmin):
     search_fields = ("code", "name", "serie__name", "serie__dependencia__name")
 
 
+@admin.register(TipoDocumental)
+class TipoDocumentalAdmin(admin.ModelAdmin):
+    list_display = ("name", "subserie", "is_required", "is_active")
+    list_filter = ("is_required", "is_active", "subserie__serie__dependencia")
+    search_fields = ("name", "subserie__name")
+
+
 
 
 
@@ -46,9 +53,10 @@ class DocumentAdmin(admin.ModelAdmin):
         "dependencia",
         "serie",
         "subserie",
+        "tipo_documental",
         "uploaded_by",
     )
-    list_filter = ("estado", "soporte", "dependencia", "serie", "fecha_radicacion", "created_at", "uploaded_by")
+    list_filter = ("estado", "soporte", "dependencia", "serie", "subserie", "tipo_documental", "fecha_radicacion", "created_at", "uploaded_by")
     search_fields = (
         "numero_radicado",
         "title",
@@ -56,6 +64,7 @@ class DocumentAdmin(admin.ModelAdmin):
         "description",
         "serie__name",
         "subserie__name",
+        "tipo_documental__name",
     )
 
 

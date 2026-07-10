@@ -56,25 +56,33 @@ class AuditLog(models.Model):
         null=True,
         blank=True,
     )
-    ip_address = models.GenericIPAddressField(
+    ip = models.GenericIPAddressField(
         null=True,
         blank=True,
     )
-    timestamp = models.DateTimeField(
+    fecha = models.DateTimeField(
         auto_now_add=True,
         db_index=True,
     )
 
+    @property
+    def ip_address(self):
+        return self.ip
+
+    @property
+    def timestamp(self):
+        return self.fecha
+
     class Meta:
-        ordering = ["-timestamp"]
+        ordering = ["-fecha"]
         verbose_name = "registro de auditoría"
         verbose_name_plural = "registros de auditoría"
         indexes = [
-            models.Index(fields=["user", "timestamp"]),
-            models.Index(fields=["dependencia", "timestamp"]),
-            models.Index(fields=["module", "action", "timestamp"]),
+            models.Index(fields=["user", "fecha"]),
+            models.Index(fields=["dependencia", "fecha"]),
+            models.Index(fields=["module", "action", "fecha"]),
         ]
 
     def __str__(self):
         user_str = self.user.username if self.user else "Anónimo"
-        return f"{self.timestamp} - {user_str} - {self.get_action_display()} - {self.module}"
+        return f"{self.fecha} - {user_str} - {self.get_action_display()} - {self.module}"

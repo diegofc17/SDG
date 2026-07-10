@@ -52,6 +52,6 @@ def log_action(request=None, user=None, action=None, module=None, description=""
         description=description,
         object_repr=object_repr,
         object_id=object_id,
-        ip_address=ip_address,
+        ip=ip_address,
     )
     return log_entry

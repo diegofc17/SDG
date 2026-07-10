@@ -19,7 +19,7 @@ def superuser_required(user):
 @login_required
 @user_passes_test(superuser_required)
 def audit_list(request):
-    logs = AuditLog.objects.select_related("user", "dependencia").order_by("-timestamp")
+    logs = AuditLog.objects.select_related("user", "dependencia").order_by("-fecha")
     
     form = AuditSearchForm(request.GET or None)
     if form.is_valid():
@@ -39,9 +39,9 @@ def audit_list(request):
         if modulo:
             logs = logs.filter(module=modulo)
         if fecha_desde:
-            logs = logs.filter(timestamp__date__gte=fecha_desde)
+            logs = logs.filter(fecha__date__gte=fecha_desde)
         if fecha_hasta:
-            logs = logs.filter(timestamp__date__lte=fecha_hasta)
+            logs = logs.filter(fecha__date__lte=fecha_hasta)
 
     paginator = Paginator(logs, 25)
     page_number = request.GET.get("page")
@@ -61,7 +61,7 @@ def audit_list(request):
 @login_required
 @user_passes_test(superuser_required)
 def audit_export(request):
-    logs = AuditLog.objects.select_related("user", "dependencia").order_by("-timestamp")
+    logs = AuditLog.objects.select_related("user", "dependencia").order_by("-fecha")
     
     form = AuditSearchForm(request.GET or None)
     if form.is_valid():
@@ -81,16 +81,16 @@ def audit_export(request):
         if modulo:
             logs = logs.filter(module=modulo)
         if fecha_desde:
-            logs = logs.filter(timestamp__date__gte=fecha_desde)
+            logs = logs.filter(fecha__date__gte=fecha_desde)
         if fecha_hasta:
-            logs = logs.filter(timestamp__date__lte=fecha_hasta)
+            logs = logs.filter(fecha__date__lte=fecha_hasta)
 
     export_format = (request.GET.get("format") or "csv").lower()
     if export_format not in {"csv", "xlsx"}:
         raise Http404("Formato no soportado.")
 
     fields = [
-        ("timestamp", "Fecha y Hora"),
+        ("fecha", "Fecha y Hora"),
         ("user", "Usuario"),
         ("dependencia", "Dependencia"),
         ("get_action_display", "Acción"),
@@ -98,7 +98,7 @@ def audit_export(request):
         ("description", "Descripción"),
         ("object_repr", "Objeto afectado"),
         ("object_id", "ID Objeto"),
-        ("ip_address", "Dirección IP"),
+        ("ip", "Dirección IP"),
     ]
 
     filename = f"reporte_auditoria_{datetime.date.today().isoformat()}.{export_format}"
@@ -121,8 +121,8 @@ def audit_export(request):
                     val = log.get_action_display()
                 elif attr == "get_module_display":
                     val = log.get_module_display()
-                elif attr == "timestamp":
-                    val = log.timestamp.strftime("%Y-%m-%d %H:%M:%S")
+                elif attr == "fecha":
+                    val = log.fecha.strftime("%Y-%m-%d %H:%M:%S")
                 else:
                     val = getattr(log, attr, "")
                 
@@ -157,9 +157,9 @@ def audit_export(request):
                 val = log.get_action_display()
             elif attr == "get_module_display":
                 val = log.get_module_display()
-            elif attr == "timestamp":
+            elif attr == "fecha":
                 # openpyxl maneja datetime nativo, pero sin timezone para evitar líos
-                val = log.timestamp.astimezone().replace(tzinfo=None)
+                val = log.fecha.astimezone().replace(tzinfo=None)
             else:
                 val = getattr(log, attr, "")
             

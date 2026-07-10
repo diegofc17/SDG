@@ -143,7 +143,12 @@ class Command(BaseCommand):
                 current_serie, created = SerieDocumental.objects.update_or_create(
                     dependencia=dependencia,
                     code=serie_code,
-                    defaults={"name": description, "is_active": True},
+                    defaults={
+                        "name": description,
+                        "retencion_archivo_gestion": self._to_int(row.get("E")),
+                        "retencion_archivo_central": self._to_int(row.get("F")),
+                        "is_active": True,
+                    },
                 )
                 current_subserie = None
                 if created:

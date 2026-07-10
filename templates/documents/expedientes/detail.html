@@ -22,6 +22,7 @@
   <p><strong>Dependencia:</strong> {% if expediente.dependencia %}{{ expediente.dependencia.display_label }}{% else %}-{% endif %}</p>
   <p><strong>Serie:</strong> {% if expediente.serie %}{{ expediente.serie.display_label }}{% else %}-{% endif %}</p>
   <p><strong>Subserie:</strong> {% if expediente.subserie %}{{ expediente.subserie.display_label }}{% else %}-{% endif %}</p>
+  <p><strong>Subserie TVD:</strong> {% if expediente.tvd_subserie %}{{ expediente.tvd_subserie.display_label }}{% else %}-{% endif %}</p>
   <p><strong>Descripcion:</strong> {{ expediente.descripcion|default:"Sin descripcion." }}</p>
 </section>
 

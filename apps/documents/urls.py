@@ -18,6 +18,7 @@ from .views import (
     expedientes_by_serie,
     trd_list,
     tvd_list,
+    tipos_documentales_by_subserie,
 )
 
 urlpatterns = [
@@ -37,6 +38,7 @@ urlpatterns = [
     path("<int:pk>/eliminar/", document_delete, name="document_delete"),
     path("<int:pk>/preview/", document_preview, name="document_preview"),
     path("api/subseries/", subseries_by_serie, name="subseries_by_serie"),
+    path("api/tipos-documentales/", tipos_documentales_by_subserie, name="tipos_documentales_by_subserie"),
     path("api/expedientes/", expedientes_by_serie, name="expedientes_by_serie"),
 ]
 
