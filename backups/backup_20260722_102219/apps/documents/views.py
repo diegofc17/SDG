@@ -1,0 +1,626 @@
+import mimetypes
+import csv
+import datetime
+from io import BytesIO
+
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import permission_required
+from django.core.paginator import Paginator
+from django.db.models import Case, Count, IntegerField, Q, Value, When
+from django.core.exceptions import PermissionDenied
+from django.http import FileResponse, Http404, JsonResponse, HttpResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.clickjacking import xframe_options_exempt
+
+from apps.accounts.models import Profile
+
+from .forms import DocumentForm, DocumentSearchForm, ExpedienteDocumentForm, ExpedienteForm
+from .models import Dependencia, Document, Expediente, SubserieDocumental, TVDSeccion, TVDSerie, TVDSubserie, TipoDocumental
+from apps.audit.utils import log_action
+
+
+def _documents_for_user(user):
+    profile, _ = Profile.objects.get_or_create(user=user)
+    queryset = Document.objects.select_related(
+        "dependencia", "expediente", "serie", "subserie", "tipo_documental", "tvd_subserie", "uploaded_by"
+    )
+    if user.is_superuser:
+        return queryset, profile
+    dep_ids = list(profile.get_dependencias_ids())
+    if not dep_ids:
+        return queryset.none(), profile
+    return queryset.filter(dependencia_id__in=dep_ids), profile
+
+
+def _expedientes_for_user(user):
+    profile, _ = Profile.objects.get_or_create(user=user)
+    queryset = Expediente.objects.select_related("dependencia", "serie", "subserie", "tvd_subserie", "created_by")
+    if user.is_superuser:
+        return queryset, profile
+    dep_ids = list(profile.get_dependencias_ids())
+    if not dep_ids:
+        return queryset.none(), profile
+    return queryset.filter(dependencia_id__in=dep_ids), profile
+
+
+def _apply_document_search_filters(queryset, search_form):
+    if not search_form.is_valid():
+        return queryset
+
+    q = (search_form.cleaned_data.get("q") or "").strip()
+    estado = search_form.cleaned_data.get("estado")
+    soporte = search_form.cleaned_data.get("soporte")
+    fecha_desde = search_form.cleaned_data.get("fecha_desde")
+    fecha_hasta = search_form.cleaned_data.get("fecha_hasta")
+
+    if q:
+        queryset = queryset.annotate(
+            match_priority=Case(
+                When(numero_radicado__iexact=q, then=Value(0)),
+                When(numero_radicado__istartswith=q, then=Value(1)),
+                When(title__istartswith=q, then=Value(2)),
+                When(asunto__istartswith=q, then=Value(3)),
+                default=Value(4),
+                output_field=IntegerField(),
+            )
+        ).filter(
+            Q(numero_radicado__icontains=q)
+            | Q(title__icontains=q)
+            | Q(asunto__icontains=q)
+            | Q(description__icontains=q)
+            | Q(observaciones__icontains=q)
+            | Q(expediente__codigo__icontains=q)
+            | Q(expediente__nombre__icontains=q)
+            | Q(serie__name__icontains=q)
+            | Q(subserie__name__icontains=q)
+            | Q(tipo_documental__name__icontains=q)
+            | Q(tvd_subserie__name__icontains=q)
+        )
+        queryset = queryset.order_by("match_priority", "-fecha_radicacion", "-created_at")
+
+    if estado:
+        queryset = queryset.filter(estado=estado)
+    if soporte:
+        queryset = queryset.filter(soporte=soporte)
+    if fecha_desde:
+        queryset = queryset.filter(fecha_documento__gte=fecha_desde)
+    if fecha_hasta:
+        queryset = queryset.filter(fecha_documento__lte=fecha_hasta)
+
+    return queryset
+
+
+@login_required
+@permission_required("documents.view_document", raise_exception=True)
+def document_list(request):
+    docs, profile = _documents_for_user(request.user)
+    search_form = DocumentSearchForm(request.GET or None)
+    docs = _apply_document_search_filters(docs, search_form)
+
+    paginator = Paginator(docs, 15)
+    page_obj = paginator.get_page(request.GET.get("page"))
+
+    return render(
+        request,
+        "documents/list.html",
+        {
+            "documents": page_obj.object_list,
+            "page_obj": page_obj,
+            "search_form": search_form,
+            "user_dependencias": profile.dependencias.all(),
+        },
+    )
+
+
+@login_required
+@permission_required("documents.view_document", raise_exception=True)
+def document_export(request):
+    docs, _ = _documents_for_user(request.user)
+    search_form = DocumentSearchForm(request.GET or None)
+    docs = _apply_document_search_filters(docs, search_form)
+
+    export_format = (request.GET.get("format") or "csv").lower()
+    if export_format not in {"csv", "xlsx"}:
+        raise Http404("Formato no soportado.")
+
+    fields = [
+        ("numero_radicado", "Radicado"),
+        ("title", "Titulo"),
+        ("asunto", "Asunto"),
+        ("fecha_documento", "Fecha documento"),
+        ("fecha_radicacion", "Fecha radicacion"),
+        ("estado_label", "Estado"),
+        ("soporte_label", "Soporte"),
+        ("dependencia", "Dependencia"),
+        ("expediente", "Expediente"),
+        ("serie", "Serie"),
+        ("subserie", "Subserie"),
+        ("tipo_documental", "Tipo Documental"),
+        ("tvd_subserie", "Subserie TVD"),
+        ("uploaded_by", "Usuario"),
+        ("created_at", "Creado"),
+    ]
+
+    filename = f"reporte_documentos.{export_format}"
+    if export_format == "csv":
+        response = HttpResponse(content_type="text/csv; charset=utf-8")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        response.write("\ufeff")  # Excel-friendly UTF-8 BOM
+        writer = csv.writer(response)
+        writer.writerow([label for _, label in fields])
+        for doc in docs.iterator(chunk_size=1000):
+            row = []
+            for attr, _label in fields:
+                value = getattr(doc, attr, "")
+                if callable(value):
+                    value = value()
+                row.append(str(value) if value is not None else "")
+            writer.writerow(row)
+        return response
+
+    # XLSX export uses openpyxl if available.
+    try:
+        from openpyxl import Workbook
+    except ModuleNotFoundError as exc:
+        return HttpResponse(
+            "No se puede exportar a Excel porque falta la dependencia 'openpyxl'. "
+            "Instala con: pip install openpyxl",
+            status=400,
+            content_type="text/plain; charset=utf-8",
+        )
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Documentos"
+    ws.append([label for _, label in fields])
+    for doc in docs.iterator(chunk_size=1000):
+        row = []
+        for attr, _label in fields:
+            value = getattr(doc, attr, "")
+            if callable(value):
+                value = value()
+            if value is None:
+                row.append("")
+            elif isinstance(value, (datetime.datetime, datetime.date)):
+                row.append(value.isoformat(sep=" ") if isinstance(value, datetime.datetime) else value.isoformat())
+            else:
+                row.append(str(value))
+        ws.append(row)
+
+    buffer = BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+# Crear response para XLSX
+    response = HttpResponse(
+        buffer.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    # Registramos exportación
+    log_action(
+        request=request,
+        action="EXPORT",
+        module="DOCUMENTOS",
+        description=f"Exportó listado de documentos en formato {export_format.upper()}.",
+    )
+    return response
+
+
+@login_required
+@permission_required("documents.view_document", raise_exception=True)
+def expediente_list(request):
+    expedientes, profile = _expedientes_for_user(request.user)
+    return render(
+        request,
+        "documents/expedientes/list.html",
+        {
+            "expedientes": expedientes.annotate(document_count=Count("documents")),
+            "user_dependencias": profile.dependencias.all(),
+        },
+    )
+
+
+@login_required
+@permission_required("documents.add_document", raise_exception=True)
+def expediente_create(request):
+    profile, _ = Profile.objects.get_or_create(user=request.user)
+    dep_ids = list(profile.get_dependencias_ids())
+    if not request.user.is_superuser and not dep_ids:
+        return render(
+            request,
+            "documents/expedientes/form.html",
+            {"form": None, "missing_dependencia": True},
+        )
+
+    # When user has exactly one dependency we default to it; otherwise the
+    # form lets the user pick among their assigned dependencies.
+    dependencia = profile.dependencia  # first or None (single dep)
+    if request.method == "POST":
+        form = ExpedienteForm(request.POST, dependencia=dependencia, dep_ids=dep_ids)
+        if form.is_valid():
+            expediente = form.save(commit=False)
+            if not request.user.is_superuser:
+                if len(dep_ids) > 1:
+                    expediente.dependencia = form.cleaned_data["dependencia"]
+                else:
+                    expediente.dependencia = dependencia
+            expediente.created_by = request.user
+            expediente.save()
+            log_action(
+                request=request,
+                action="CREATE",
+                module="EXPEDIENTES",
+                description=f"Se creó el expediente '{expediente.nombre}' (Código: {expediente.codigo}).",
+                obj=expediente,
+            )
+            return redirect("expediente_detail", pk=expediente.pk)
+    else:
+        form = ExpedienteForm(dependencia=dependencia, dep_ids=dep_ids)
+
+    return render(
+        request,
+        "documents/expedientes/form.html",
+        {"form": form, "missing_dependencia": False},
+    )
+
+
+@login_required
+@permission_required("documents.change_document", raise_exception=True)
+def expediente_update(request, pk):
+    expedientes, profile = _expedientes_for_user(request.user)
+    expediente = get_object_or_404(expedientes, pk=pk)
+
+    if not request.user.is_superuser and expediente.created_by_id != request.user.id:
+        raise PermissionDenied("Solo puedes editar expedientes creados por tu propio usuario.")
+
+    dep_ids = list(profile.get_dependencias_ids()) if not request.user.is_superuser else []
+    if request.method == "POST":
+        form = ExpedienteForm(request.POST, instance=expediente, dependencia=expediente.dependencia, dep_ids=dep_ids)
+        if form.is_valid():
+            updated_expediente = form.save(commit=False)
+            updated_expediente.dependencia = expediente.dependencia
+            updated_expediente.created_by = expediente.created_by
+            updated_expediente.save()
+            log_action(
+                request=request,
+                action="UPDATE",
+                module="EXPEDIENTES",
+                description=f"Se modificó el expediente '{updated_expediente.nombre}' (Código: {updated_expediente.codigo}).",
+                obj=updated_expediente,
+            )
+            return redirect("expediente_detail", pk=expediente.pk)
+    else:
+        form = ExpedienteForm(instance=expediente, dependencia=expediente.dependencia, dep_ids=dep_ids)
+
+    return render(
+        request,
+        "documents/expedientes/form.html",
+        {
+            "form": form,
+            "missing_dependencia": False,
+            "is_edit": True,
+            "expediente": expediente,
+        },
+    )
+
+
+@login_required
+@permission_required("documents.view_document", raise_exception=True)
+def expediente_detail(request, pk):
+    expedientes, profile = _expedientes_for_user(request.user)
+    expediente = get_object_or_404(expedientes, pk=pk)
+    documents = expediente.documents.select_related("uploaded_by", "serie", "subserie").order_by("-created_at")
+    add_document_form = ExpedienteDocumentForm(dependencia=expediente.dependencia, expediente=expediente)
+
+    log_action(
+        request=request,
+        action="VIEW",
+        module="EXPEDIENTES",
+        description=f"Consultó el detalle del expediente '{expediente.nombre}' (Código: {expediente.codigo}).",
+        obj=expediente,
+    )
+
+    return render(
+        request,
+        "documents/expedientes/detail.html",
+        {
+            "expediente": expediente,
+            "documents": documents,
+            "add_document_form": add_document_form,
+            "can_manage": request.user.is_superuser
+            or (
+                request.user.has_perm("documents.change_document")
+                and expediente.dependencia_id in profile.get_dependencias_ids()
+            ),
+        },
+    )
+
+
+@login_required
+@permission_required("documents.change_document", raise_exception=True)
+def expediente_add_document(request, pk):
+    expedientes, _ = _expedientes_for_user(request.user)
+    expediente = get_object_or_404(expedientes, pk=pk)
+
+    if request.method != "POST":
+        return redirect("expediente_detail", pk=expediente.pk)
+
+    form = ExpedienteDocumentForm(request.POST, dependencia=expediente.dependencia, expediente=expediente)
+    if form.is_valid():
+        document = form.cleaned_data["documento"]
+        document.expediente = expediente
+        document.save(update_fields=["expediente", "updated_at"])
+        log_action(
+            request=request,
+            action="UPDATE",
+            module="EXPEDIENTES",
+            description=f"Asoció el documento '{document.title}' al expediente '{expediente.nombre}' (Código: {expediente.codigo}).",
+            obj=expediente,
+        )
+
+    return redirect("expediente_detail", pk=expediente.pk)
+
+
+@login_required
+@permission_required("documents.add_document", raise_exception=True)
+def document_create(request):
+    profile, _ = Profile.objects.get_or_create(user=request.user)
+    dep_ids = list(profile.get_dependencias_ids())
+
+    if not request.user.is_superuser and not dep_ids:
+        return render(
+            request,
+            "documents/create.html",
+            {"form": None, "missing_dependencia": True},
+        )
+
+    dependencia = profile.dependencia  # first or None (single dep)
+    if request.method == "POST":
+        form = DocumentForm(request.POST, request.FILES, dependencia=dependencia, dep_ids=dep_ids)
+        if form.is_valid():
+            doc = form.save(commit=False)
+            doc.uploaded_by = request.user
+            if not request.user.is_superuser:
+                if len(dep_ids) > 1:
+                    # Dependencia comes from the form selector
+                    doc.dependencia = form.cleaned_data["dependencia"]
+                else:
+                    doc.dependencia = dependencia
+            doc.save()
+            log_action(
+                request=request,
+                action="CREATE",
+                module="DOCUMENTOS",
+                description=f"Se creó el documento '{doc.title}'.",
+                obj=doc,
+            )
+            return redirect("document_list")
+    else:
+        form = DocumentForm(dependencia=dependencia, dep_ids=dep_ids)
+
+    return render(request, "documents/create.html", {"form": form, "missing_dependencia": False})
+
+
+@login_required
+@permission_required("documents.change_document", raise_exception=True)
+def document_update(request, pk):
+    queryset, profile = _documents_for_user(request.user)
+    document = get_object_or_404(queryset, pk=pk)
+
+    if not request.user.is_superuser and document.uploaded_by_id != request.user.id:
+        raise PermissionDenied("Solo puedes editar documentos cargados por tu propio usuario.")
+
+    dep_ids = list(profile.get_dependencias_ids()) if not request.user.is_superuser else []
+    if request.method == "POST":
+        form = DocumentForm(
+            request.POST,
+            request.FILES,
+            instance=document,
+            dependencia=document.dependencia,
+            dep_ids=dep_ids,
+        )
+        if form.is_valid():
+            updated_document = form.save(commit=False)
+            updated_document.uploaded_by = document.uploaded_by
+            updated_document.dependencia = document.dependencia
+            updated_document.save()
+            log_action(
+                request=request,
+                action="UPDATE",
+                module="DOCUMENTOS",
+                description=f"Se modificó el documento '{updated_document.title}'.",
+                obj=updated_document,
+            )
+            return redirect("document_detail", pk=document.pk)
+    else:
+        form = DocumentForm(instance=document, dependencia=document.dependencia, dep_ids=dep_ids)
+
+    return render(
+        request,
+        "documents/create.html",
+        {
+            "form": form,
+            "missing_dependencia": False,
+            "is_edit": True,
+            "document": document,
+        },
+    )
+
+
+@login_required
+@permission_required("documents.view_document", raise_exception=True)
+def document_detail(request, pk):
+    queryset, _ = _documents_for_user(request.user)
+    document = get_object_or_404(queryset, pk=pk)
+    log_action(
+        request=request,
+        action="VIEW",
+        module="DOCUMENTOS",
+        description=f"Consultó la ficha del documento '{document.title}'.",
+        obj=document,
+    )
+    return render(request, "documents/detail.html", {"document": document})
+
+
+@xframe_options_exempt
+@login_required
+@permission_required("documents.view_document", raise_exception=True)
+def document_preview(request, pk):
+    queryset, _ = _documents_for_user(request.user)
+    document = get_object_or_404(queryset, pk=pk)
+    if not document.file:
+        raise Http404("El documento no tiene archivo asociado.")
+
+    guessed_type, _ = mimetypes.guess_type(document.file.name)
+    content_type = guessed_type or "application/octet-stream"
+    response = FileResponse(document.file.open("rb"), content_type=content_type)
+    response["Content-Disposition"] = f'inline; filename="{document.file.name.split("/")[-1]}"'
+    
+    log_action(
+        request=request,
+        action="DOWNLOAD",
+        module="DOCUMENTOS",
+        description=f"Previsualizó o descargó el archivo del documento '{document.title}'.",
+        obj=document,
+    )
+    return response
+
+
+@login_required
+@permission_required("documents.add_document", raise_exception=True)
+def subseries_by_serie(request):
+    serie_id = request.GET.get("serie_id")
+    queryset = SubserieDocumental.objects.filter(is_active=True, serie_id=serie_id)
+    data = [{"id": item.id, "name": item.display_label} for item in queryset.order_by("code", "name")]
+    return JsonResponse({"results": data})
+
+
+@login_required
+@permission_required("documents.add_document", raise_exception=True)
+def tipos_documentales_by_subserie(request):
+    subserie_id = request.GET.get("subserie_id")
+    queryset = TipoDocumental.objects.filter(is_active=True, subserie_id=subserie_id)
+    data = [{"id": item.id, "name": item.name} for item in queryset.order_by("name")]
+    return JsonResponse({"results": data})
+
+
+@login_required
+@permission_required("documents.view_document", raise_exception=True)
+def expedientes_by_serie(request):
+    serie_id = request.GET.get("serie_id")
+    if not serie_id:
+        return JsonResponse({"results": []})
+    queryset = Expediente.objects.filter(serie_id=serie_id).exclude(estado="archivado")
+    data = [{"id": item.id, "name": f"{item.codigo} - {item.nombre}"} for item in queryset.order_by("codigo", "nombre")]
+    return JsonResponse({"results": data})
+
+
+
+@login_required
+def trd_list(request):
+    dependencias = Dependencia.objects.filter(is_active=True)
+    selected_dep_id = request.GET.get("dependencia")
+    
+    subseries_list = SubserieDocumental.objects.filter(is_active=True).select_related("serie__dependencia")
+    if selected_dep_id:
+        subseries_list = subseries_list.filter(serie__dependencia_id=selected_dep_id)
+        
+    subseries_list = subseries_list.order_by("serie__dependencia__code", "serie__code", "code", "name")
+
+    paginator = Paginator(subseries_list, 10)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+
+    return render(
+        request,
+        "documents/trd_list.html",
+        {
+            "dependencias": dependencias,
+            "page_obj": page_obj,
+            "selected_dep_id": selected_dep_id,
+        },
+    )
+
+
+@login_required
+def tvd_list(request):
+    secciones = TVDSeccion.objects.filter(is_active=True)
+    selected_seccion_id = request.GET.get("seccion")
+    
+    subseries_list = TVDSubserie.objects.filter(is_active=True).select_related("serie__seccion")
+    if selected_seccion_id:
+        subseries_list = subseries_list.filter(serie__seccion_id=selected_seccion_id)
+        
+    subseries_list = subseries_list.order_by("serie__seccion__code", "serie__code", "code", "name")
+
+    paginator = Paginator(subseries_list, 10)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+
+    return render(
+        request,
+        "documents/tvd_list.html",
+        {
+            "secciones": secciones,
+            "page_obj": page_obj,
+            "selected_seccion_id": selected_seccion_id,
+        },
+    )
+
+
+@login_required
+@permission_required("documents.delete_document", raise_exception=True)
+def document_delete(request, pk):
+    queryset, profile = _documents_for_user(request.user)
+    document = get_object_or_404(queryset, pk=pk)
+
+    if not request.user.is_superuser and document.uploaded_by_id != request.user.id:
+        raise PermissionDenied("Solo puedes eliminar documentos cargados por tu propio usuario.")
+
+    if request.method == "POST":
+        title = document.title
+        # Eliminar el archivo físico asociado
+        if document.file:
+            try:
+                document.file.delete(save=False)
+            except Exception:
+                pass
+        log_action(
+            request=request,
+            action="DELETE",
+            module="DOCUMENTOS",
+            description=f"Se eliminó el documento '{title}'.",
+            obj=document,
+        )
+        document.delete()
+        return redirect("document_list")
+
+    return redirect("document_detail", pk=pk)
+
+
+@login_required
+@permission_required("documents.delete_expediente", raise_exception=True)
+def expediente_delete(request, pk):
+    expedientes, profile = _expedientes_for_user(request.user)
+    expediente = get_object_or_404(expedientes, pk=pk)
+
+    if not request.user.is_superuser and expediente.created_by_id != request.user.id:
+        raise PermissionDenied("Solo puedes eliminar expedientes creados por tu propio usuario.")
+
+    if request.method == "POST":
+        nombre = expediente.nombre
+        codigo = expediente.codigo
+        log_action(
+            request=request,
+            action="DELETE",
+            module="EXPEDIENTES",
+            description=f"Se eliminó el expediente '{nombre}' (Código: {codigo}).",
+            obj=expediente,
+        )
+        expediente.delete()
+        return redirect("expediente_list")
+
+    return redirect("expediente_detail", pk=pk)
+
+
+

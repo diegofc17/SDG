@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Login | SGD{% endblock %}
+{% block content %}
+<section class="auth-panel">
+  <span class="section-kicker">Acceso</span>
+  <h1>Iniciar sesion</h1>
+  <p>Ingresa con tu usuario institucional para consultar y gestionar documentos.</p>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Entrar</button>
+  </form>
+  <p><a href="{% url 'signup' %}">No tengo cuenta, registrarme</a></p>
+</section>
+{% endblock %}

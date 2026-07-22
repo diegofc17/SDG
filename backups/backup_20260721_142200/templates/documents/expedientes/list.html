@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Expedientes | SGD{% endblock %}
+{% block content %}
+<section class="content-card">
+  <span class="section-kicker">Gestion de expedientes</span>
+  <h1>Expedientes</h1>
+  <div class="hero-actions">
+    <a href="{% url 'expediente_create' %}" role="button">Crear expediente</a>
+    <a href="{% url 'document_list' %}" role="button" class="secondary">Ver documentos</a>
+  </div>
+
+  {% if user_dependencia %}
+  <div class="info-strip"><strong>Dependencia activa:</strong> {{ user_dependencia }}</div>
+  {% else %}
+  <div class="info-strip"><strong>No tienes dependencia asignada.</strong> Solicita al administrador asignarte una dependencia.</div>
+  {% endif %}
+
+  <table style="margin-top: 1rem;">
+    <thead>
+      <tr>
+        <th>Codigo</th>
+        <th>Nombre</th>
+        <th>Estado</th>
+        <th>Documentos</th>
+        <th>Dependencia</th>
+        <th>Creado</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for expediente in expedientes %}
+      <tr>
+        <td><a href="{% url 'expediente_detail' expediente.pk %}">{{ expediente.codigo }}</a></td>
+        <td><a href="{% url 'expediente_detail' expediente.pk %}">{{ expediente.nombre }}</a></td>
+        <td>{{ expediente.estado_label }}</td>
+        <td>{{ expediente.document_count }}</td>
+        <td>{% if expediente.dependencia %}{{ expediente.dependencia.display_label }}{% else %}-{% endif %}</td>
+        <td>{{ expediente.created_at }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6">No hay expedientes registrados.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}
