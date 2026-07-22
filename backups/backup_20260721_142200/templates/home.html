@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Inicio | SGD{% endblock %}
+{% block content %}
+<section class="hero-panel">
+  <span class="section-kicker">Gestion institucional</span>
+  <h1>Sistema de Gestion Documental</h1>
+  <p>Plataforma para radicacion, clasificacion TRD, consulta y custodia documental por dependencia.</p>
+  <div class="hero-actions">
+    {% if user.is_authenticated %}
+    <a href="/documentos/" role="button">Ir a documentos</a>
+    <form method="post" action="{% url 'logout' %}" class="inline-form">
+      {% csrf_token %}
+      <button type="submit" class="secondary">Cerrar sesión</button>
+    </form>
+    {% else %}
+    <a href="{% url 'login' %}" role="button">Iniciar sesión</a>
+    <a href="{% url 'signup' %}" role="button" class="secondary">Registrarme</a>
+    {% endif %}
+  </div>
+</section>
+
+<section class="grid" style="margin-top: 1.5rem;">
+  <article class="content-card">
+    <span class="section-kicker">TRD</span>
+    <h2>Clasificacion archivistica</h2>
+    <p>Series, subseries y tipos documentales ya integrados con las tablas de retencion documental de la alcaldia.</p>
+  </article>
+  <article class="content-card">
+    <span class="section-kicker">Control</span>
+    <h2>Permisos por dependencia</h2>
+    <p>Cada usuario trabaja solo con su dependencia y con los permisos del rol asignado.</p>
+  </article>
+</section>
+{% endblock %}

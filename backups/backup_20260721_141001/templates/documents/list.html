@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+{% block title %}Documentos | SGD{% endblock %}
+{% block content %}
+<section class="content-card">
+  <span class="section-kicker">Consulta documental</span>
+  <h1>Documentos</h1>
+
+  <div class="hero-actions">
+    <a href="/documentos/nuevo/" role="button">Subir documento</a>
+    <a href="{% url 'document_export' %}?format=csv&{{ request.GET.urlencode }}" role="button" class="secondary">Exportar CSV</a>
+    <a href="{% url 'document_export' %}?format=xlsx&{{ request.GET.urlencode }}" role="button" class="secondary">Exportar Excel</a>
+    <button type="button" class="secondary" id="toggle-search" aria-expanded="false" aria-controls="search-panel">Buscar</button>
+  </div>
+
+  {% if user_dependencia %}
+  <div class="info-strip"><strong>Dependencia activa:</strong> {{ user_dependencia }}</div>
+  {% else %}
+  <div class="info-strip"><strong>No tienes dependencia asignada.</strong> Solo podras ver documentos cuando el admin te la asigne.</div>
+  {% endif %}
+
+  {# ── Formulario de búsqueda con rejilla responsiva inteligente ─────────── #}
+  <form method="get" class="search-panel is-collapsed" id="search-panel">
+    {# Fila 1: Búsqueda de texto — ancho completo #}
+    <div class="search-grid-main">
+      <div>
+        <label for="{{ search_form.q.id_for_label }}">Busqueda</label>
+        {{ search_form.q }}
+      </div>
+    </div>
+
+    {# Fila 2: Estado y Soporte — 2 columnas lado a lado #}
+    <div class="search-grid-secondary">
+      <div>
+        <label for="{{ search_form.estado.id_for_label }}">Estado</label>
+        {{ search_form.estado }}
+      </div>
+      <div>
+        <label for="{{ search_form.soporte.id_for_label }}">Soporte</label>
+        {{ search_form.soporte }}
+      </div>
+    </div>
+
+    {# Fila 3: Fechas y Botones #}
+    <div class="search-grid-dates">
+      <div>
+        <label for="{{ search_form.fecha_desde.id_for_label }}">Fecha desde</label>
+        {{ search_form.fecha_desde }}
+      </div>
+      <div>
+        <label for="{{ search_form.fecha_hasta.id_for_label }}">Fecha hasta</label>
+        {{ search_form.fecha_hasta }}
+      </div>
+    </div>
+
+    {# Botones de acción #}
+    <div class="search-actions">
+      <button type="submit">Buscar</button>
+      <a href="{% url 'document_list' %}" role="button" class="secondary">Limpiar</a>
+    </div>
+  </form>
+  <script>
+    (function () {
+      const toggle = document.getElementById("toggle-search");
+      const panel = document.getElementById("search-panel");
+      if (!toggle || !panel) return;
+
+      const params = new URLSearchParams(window.location.search);
+      const hasFilters =
+        (params.get("q") || "").trim() ||
+        (params.get("estado") || "").trim() ||
+        (params.get("soporte") || "").trim() ||
+        (params.get("fecha_desde") || "").trim() ||
+        (params.get("fecha_hasta") || "").trim();
+
+      const setOpen = (open) => {
+        panel.classList.toggle("is-collapsed", !open);
+        toggle.setAttribute("aria-expanded", open ? "true" : "false");
+        toggle.textContent = open ? "Ocultar busqueda" : "Buscar";
+        if (open) {
+          const input = panel.querySelector("input, select, textarea");
+          if (input) input.focus({ preventScroll: true });
+        }
+      };
+
+      setOpen(Boolean(hasFilters));
+      toggle.addEventListener("click", () => {
+        setOpen(panel.classList.contains("is-collapsed"));
+      });
+    })();
+  </script>
+
+  {# ── Lista de documentos en filas modernas ─────────────────────────────── #}
+  <div class="document-rows">
+    {% for doc in documents %}
+      <div class="document-row estado-{{ doc.estado }} ext-{{ doc.file_extension|slice:"1:" }}">
+
+        {# Bloque Izquierdo: Icono + Título + Asunto #}
+        <div class="row-left">
+          <div class="row-file-icon">
+            {% if doc.file_extension == ".pdf" %}
+              <svg style="width:20px;height:20px;fill:currentColor;" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9.5 6H10v1.5H8.5V9H10zm0 4H10v1.5H8.5V13H10zM19 15c0 .55-.45 1-1 1h-2v1.5h-1.5V13H18c.55 0 1 .45 1 1v1zm-3.5-3.5H17v1.5h-1.5v-1.5zM12 9h1.5c.55 0 1 .45 1 1v4c0 .55-.45 1-1 1H12V9zm1.5 4.5V10.5H13v3h.5z"/></svg>
+            {% elif doc.file_extension in ".png.jpg.jpeg.gif.webp.svg" %}
+              <svg style="width:20px;height:20px;fill:currentColor;" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-1 16H6c-.55 0-1-.45-1-1V6c0-.55.45-1 1-1h12c.55 0 1 .45 1 1v12c0 .55-.45 1-1 1zm-4.44-6.23l-2.31 3.09-1.63-1.95L6.5 17h11l-3.94-5.23z"/></svg>
+            {% else %}
+              <svg style="width:20px;height:20px;fill:currentColor;" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+            {% endif %}
+          </div>
+          <div class="row-text-info">
+            <h3 class="row-title">
+              <a href="{% url 'document_detail' doc.pk %}">{{ doc.title }}</a>
+            </h3>
+            {% if doc.asunto %}
+              <span class="row-asunto-snippet" title="{{ doc.asunto }}"><strong>Asunto:</strong> {{ doc.asunto }}</span>
+            {% endif %}
+            <span class="row-uploader-info">
+              <svg style="width:10px;height:10px;fill:currentColor;vertical-align:middle;" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 4c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm0 14c-2.03 0-4.43-1-5.61-2.58C7.56 15.84 9.69 15 12 15s4.44.84 5.61 2.42C16.43 19 14.03 20 12 20z"/></svg>
+              Cargado por {{ doc.uploaded_by }}
+            </span>
+          </div>
+        </div>
+
+        {# Bloque Central: Clasificación TRD #}
+        <div class="row-center">
+          <div class="trd-breadcrumbs">
+            <span class="trd-breadcrumb-label">Clasificación TRD</span>
+            <span class="trd-breadcrumb-item">
+              <strong>{% if doc.dependencia %}{{ doc.dependencia.code }}{% else %}-{% endif %}</strong>
+              &rsaquo;
+              {% if doc.serie %}{{ doc.serie.name }}{% else %}-{% endif %}
+              &rsaquo;
+              {% if doc.subserie %}{{ doc.subserie.name }}{% else %}-{% endif %}
+            </span>
+          </div>
+        </div>
+
+        {# Bloque Derecho: Radicado, Estado, Soporte, Fecha y Botones #}
+        <div class="row-right">
+          <div class="row-badges-col">
+            <div class="row-badges-row">
+              {% if doc.numero_radicado %}
+                <span class="row-radicado-tag">R-{{ doc.numero_radicado }}</span>
+              {% else %}
+                <span class="row-radicado-tag none">Sin Radicar</span>
+              {% endif %}
+              <span class="badge badge-estado-{{ doc.estado }}">{{ doc.estado_label }}</span>
+            </div>
+            <span class="badge badge-soporte-{{ doc.soporte }}">{{ doc.soporte_label }}</span>
+          </div>
+
+          <div class="row-date-info">
+            <span class="date-label">Fecha Documento</span>
+            <span class="date-value">{% if doc.fecha_documento %}{{ doc.fecha_documento }}{% else %}-{% endif %}</span>
+          </div>
+
+          <div class="row-actions-col">
+            <a href="{% url 'document_detail' doc.pk %}" role="button" class="secondary outline row-action-button">Ver detalle</a>
+          </div>
+        </div>
+
+      </div>
+    {% empty %}
+      <article style="text-align:center; padding:2.5rem; width:100%;">
+        <p style="color:var(--sgd-muted); font-size:1rem; margin-bottom:0;">No hay documentos registrados para tu dependencia.</p>
+      </article>
+    {% endfor %}
+  </div>
+
+  {# ── Paginación ─────────────────────────────────────────────────────────── #}
+  {% if page_obj %}
+  <div class="pagination-bar">
+    <span>Pagina {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+    <div class="hero-actions" style="margin-top:0;">
+      {% if page_obj.has_previous %}
+      <a href="?page={{ page_obj.previous_page_number }}&q={{ request.GET.q|default:'' }}&estado={{ request.GET.estado|default:'' }}&soporte={{ request.GET.soporte|default:'' }}&fecha_desde={{ request.GET.fecha_desde|default:'' }}&fecha_hasta={{ request.GET.fecha_hasta|default:'' }}" role="button" class="secondary">← Anterior</a>
+      {% endif %}
+      {% if page_obj.has_next %}
+      <a href="?page={{ page_obj.next_page_number }}&q={{ request.GET.q|default:'' }}&estado={{ request.GET.estado|default:'' }}&soporte={{ request.GET.soporte|default:'' }}&fecha_desde={{ request.GET.fecha_desde|default:'' }}&fecha_hasta={{ request.GET.fecha_hasta|default:'' }}" role="button" class="secondary">Siguiente →</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

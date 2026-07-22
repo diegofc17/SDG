@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Registro | SGD{% endblock %}
+{% block content %}
+<section class="auth-panel">
+  <span class="section-kicker">Registro</span>
+  <h1>Crear cuenta</h1>
+  <p>Registra el usuario y luego asigna dependencia y permisos desde el panel administrativo.</p>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Registrarme</button>
+  </form>
+  <p><a href="{% url 'login' %}">Ya tengo cuenta, iniciar sesion</a></p>
+</section>
+{% endblock %}

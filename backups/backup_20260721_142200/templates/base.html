@@ -1,0 +1,209 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}SGD{% endblock %}</title>
+  <link rel="icon" type="image/png" href="{% static 'img/logo.png' %}">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body>
+  <div class="page-shell">
+    <header class="topbar container">
+      <nav class="main-nav">
+        <ul>
+          <li>
+            <a href="/" class="brand-mark">
+              <img src="{% static 'img/logo.png' %}" alt="Logo Alcaldia de Cabrera" class="brand-logo">
+              <span class="brand-copy">
+                <strong>Sistema de Gestion Documental</strong>
+                <small>Alcaldia de Cabrera</small>
+              </span>
+            </a>
+          </li>
+        </ul>
+        <ul>
+          <li><a href="/">Inicio</a></li>
+          <li><a href="/dashboard/">Dashboard</a></li>
+          <li><a href="/documentos/">Documentos</a></li>
+          <li><a href="{% url 'expediente_list' %}">Expedientes</a></li>
+          <li><a href="{% url 'trd_list' %}">TRD</a></li>
+          <li><a href="{% url 'tvd_list' %}">TVD</a></li>
+          {% if user.is_superuser %}
+          <li><a href="{% url 'audit_list' %}">Auditoría</a></li>
+          {% endif %}
+          {% if user.is_authenticated %}
+          <li>
+            <form method="post" action="{% url 'logout' %}" class="nav-logout">
+              {% csrf_token %}
+              <button type="submit" class="secondary">Cerrar sesión</button>
+            </form>
+          </li>
+          {% else %}
+          <li><a href="{% url 'login' %}">Iniciar sesión</a></li>
+          <li><a href="{% url 'signup' %}">Registrarme</a></li>
+          {% endif %}
+        </ul>
+      </nav>
+    </header>
+    <main class="container page-content">
+      {% block content %}{% endblock %}
+    </main>
+    <footer class="container site-footer">
+      <p>SGD institucional con clasificacion archivistica basada en TRD.</p>
+    </footer>
+  </div>
+
+  {# ── Estructura de la Pantalla de Carga Global ─────────────────────────── #}
+  <div id="loading-overlay" class="loading-overlay" aria-hidden="true">
+    <div class="loading-card">
+      <div class="loading-spinner-wrapper">
+        <div class="loading-spinner"></div>
+        <div class="loading-spinner-inner"></div>
+      </div>
+      <h3 class="loading-text" id="loading-text">Cargando...</h3>
+      <p class="loading-subtext" id="loading-subtext">Por favor espere mientras procesamos su solicitud.</p>
+      <button type="button" id="loading-cancel-btn" class="secondary outline" style="display: none;">Cancelar</button>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const overlay = document.getElementById("loading-overlay");
+      const textEl = document.getElementById("loading-text");
+      const subtextEl = document.getElementById("loading-subtext");
+      const cancelBtn = document.getElementById("loading-cancel-btn");
+      let timeoutId = null;
+
+      const showLoading = (text, subtext) => {
+        if (!overlay) return;
+        
+        textEl.textContent = text || "Cargando...";
+        subtextEl.textContent = subtext || "Por favor espere mientras procesamos su solicitud.";
+        cancelBtn.style.display = "none";
+        overlay.classList.add("is-active");
+        overlay.setAttribute("aria-hidden", "false");
+
+        // Mostrar botón de cancelar después de 8 segundos por si la operación tarda mucho
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+          if (cancelBtn) cancelBtn.style.display = "inline-block";
+        }, 8000);
+      };
+
+      const hideLoading = () => {
+        if (!overlay) return;
+        overlay.classList.remove("is-active");
+        overlay.setAttribute("aria-hidden", "true");
+        clearTimeout(timeoutId);
+      };
+
+      // Interceptar clics en enlaces (Navegación general y Paginación)
+      document.addEventListener("click", function (e) {
+        const anchor = e.target.closest("a");
+        if (!anchor) return;
+
+        const href = anchor.getAttribute("href");
+        const target = anchor.getAttribute("target");
+
+        // Ignorar enlaces vacíos, javascript, anchors internos, descargas y nuevas pestañas
+        if (!href || href.startsWith("#") || href.startsWith("javascript:") || target === "_blank") return;
+        if (anchor.hasAttribute("download")) return;
+
+        const lowercaseHref = href.toLowerCase();
+        // Ignorar clics de exportación para evitar congelar la pantalla, ya que no recargan la página
+        if (
+          lowercaseHref.includes("export") || 
+          lowercaseHref.includes("download") || 
+          lowercaseHref.endsWith(".csv") || 
+          lowercaseHref.endsWith(".xlsx")
+        ) {
+          return;
+        }
+
+        try {
+          const url = new URL(anchor.href, window.location.href);
+          if (url.origin === window.location.origin) {
+            let msg = "Cargando módulo...";
+            let sub = "Conectando con el servidor...";
+
+            if (href.includes("/documentos/nuevo/") || href.includes("/editar/")) {
+              msg = "Preparando formulario...";
+              sub = "Cargando componentes de radicación...";
+            } else if (href.includes("/documentos/trd/")) {
+              msg = "Cargando TRD...";
+              sub = "Obteniendo tablas de retención...";
+            } else if (href.includes("/documentos/tvd/")) {
+              msg = "Cargando TVD...";
+              sub = "Obteniendo tablas de valoración...";
+            } else if (href.includes("/documentos/")) {
+              msg = "Cargando documentos...";
+              sub = "Obteniendo el listado general...";
+            } else if (href.includes("/expedientes/")) {
+              msg = "Cargando expedientes...";
+              sub = "Obteniendo el listado de expedientes...";
+            } else if (href.includes("/audit/")) {
+              msg = "Cargando auditoría...";
+              sub = "Recuperando el historial de actividad...";
+            } else if (href.includes("/dashboard/")) {
+              msg = "Cargando panel...";
+              sub = "Actualizando estadísticas e indicadores...";
+            }
+
+            showLoading(msg, sub);
+          }
+        } catch (err) {}
+      });
+
+      // Interceptar envíos de formularios (Búsquedas, creación y modificación)
+      document.addEventListener("submit", function (e) {
+        const form = e.target;
+        if (!form) return;
+
+        // Evitar activar la pantalla de carga si el formulario no es válido nativamente (HTML5)
+        if (!form.checkValidity()) return;
+
+        let msg = "Procesando...";
+        let sub = "Por favor espere un momento.";
+
+        const isSearchForm = 
+          form.method.toLowerCase() === "get" && 
+          (form.id === "search-panel" || form.querySelector('input[name="q"]'));
+        const isUploadForm = 
+          form.enctype === "multipart/form-data" || 
+          form.querySelector('input[type="file"]');
+        
+        const actionAttr = form.getAttribute("action") || "";
+        const isLogin = actionAttr.includes("login") || form.querySelector('input[name="password"]');
+
+        if (isSearchForm) {
+          msg = "Buscando información...";
+          sub = "Filtrando y ordenando los registros...";
+        } else if (isUploadForm) {
+          msg = "Cargando y procesando archivo...";
+          sub = "Subiendo archivo al servidor y registrando metadatos TRD...";
+        } else if (isLogin) {
+          msg = "Iniciando sesión...";
+          sub = "Autenticando credenciales de forma segura...";
+        } else if (form.method.toLowerCase() === "post") {
+          msg = "Guardando cambios...";
+          sub = "Registrando los datos en el sistema...";
+        }
+
+        showLoading(msg, sub);
+      });
+
+      if (cancelBtn) {
+        cancelBtn.addEventListener("click", hideLoading);
+      }
+
+      // Ocultar si el usuario vuelve atrás en el historial (BF Cache)
+      window.addEventListener("pageshow", function (event) {
+        hideLoading();
+      });
+    })();
+  </script>
+</body>
+</html>
